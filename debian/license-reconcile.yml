@@ -1,0 +1,6 @@
+Rules:
+  rules:
+    -
+      Glob: debian/*
+      License: Apache-2.0
+      Copyright: Reinhard Tartler <siretart@tauware.de>

@@ -1,0 +1,5 @@
+golang-github-containers-common (0.8.1+ds1-1) experimental; urgency=medium
+
+  * Initial release (Closes: #958426)
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 21 Apr 2020 17:00:29 -0400

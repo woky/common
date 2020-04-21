@@ -1,0 +1,55 @@
+Source: golang-github-containers-common
+Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
+Uploaders: Reinhard Tartler <siretart@tauware.de>
+Section: devel
+Testsuite: autopkgtest-pkg-go
+Priority: optional
+Build-Depends: debhelper-compat (= 12),
+               dh-golang,
+               golang-any,
+               golang-github-containers-storage-dev,
+               golang-github-docker-docker-dev,
+               golang-github-docker-go-units-dev,
+               golang-github-onsi-ginkgo-dev,
+               golang-github-opencontainers-runc-dev,
+               golang-github-opencontainers-selinux-dev,
+               golang-github-pkg-errors-dev,
+               golang-github-stretchr-testify-dev,
+               golang-gocapability-dev,
+               golang-golang-x-sys-dev,
+               golang-gomega-dev,
+               golang-logrus-dev,
+               golang-toml-dev
+Standards-Version: 4.5.0
+Vcs-Browser: https://salsa.debian.org/go-team/packages/golang-github-containers-common
+Vcs-Git: https://salsa.debian.org/go-team/packages/golang-github-containers-common.git
+Homepage: https://github.com/containers/common
+Rules-Requires-Root: no
+XS-Go-Import-Path: github.com/containers/common
+
+Package: golang-github-containers-common
+Architecture: all
+Depends: ${misc:Depends}
+Description: Common files for github.com/containers repositories
+ This package contains common configuration files for use by
+ other container projects.
+
+Package: golang-github-containers-common-dev
+Architecture: all
+Depends: golang-github-containers-storage-dev,
+         golang-github-docker-docker-dev,
+         golang-github-docker-go-units-dev,
+         golang-github-onsi-ginkgo-dev,
+         golang-github-opencontainers-runc-dev,
+         golang-github-opencontainers-selinux-dev,
+         golang-github-pkg-errors-dev,
+         golang-github-stretchr-testify-dev,
+         golang-gocapability-dev,
+         golang-golang-x-sys-dev,
+         golang-gomega-dev,
+         golang-logrus-dev,
+         golang-toml-dev,
+         ${misc:Depends}
+Description: Common files for github.com/containers repositories. (library)
+ This package contains shared common files and common go code
+ to manage those files in github.com/containers repos.
