@@ -66,6 +66,13 @@ The default profile name is "container-default".
     `private` Create private Cgroup Namespace for the container.
     `host`    Share host Cgroup Namespace with the container.
 
+**cgroups**="enabled"
+  Determines  whether  the  container will create CGroups.
+  Options are:
+    `enabled`   Enable cgroup support within container
+    `disabled`  Disable cgroup support, will inherit cgroups from parent
+    `no-conmon` Container engine runs run without conmon
+
 **default_capabilities**=[]
   List of default capabilities for containers.
 
@@ -319,6 +326,9 @@ refer to a member of the runtimes table.
 
 **runtime_supports_nocgroups**=["crun"]
   The list of OCI runtimes that support running containers without CGroups.
+
+**runtime_supports_kvm**=["kata"]
+  The list of OCI runtimes that support running containers with KVM separation.
 
 **static_dir**="/var/lib/containers/storage/libpod"
   Directory for persistent libpod files (database, etc).

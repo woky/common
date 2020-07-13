@@ -6,7 +6,7 @@ GO_BUILD=$(GO) build
 ifeq ($(shell go help mod >/dev/null 2>&1 && echo true), true)
 	GO_BUILD=GO111MODULE=on $(GO) build -mod=vendor
 endif
-BUILDTAGS := ""
+BUILDTAGS :=
 DESTDIR ?=
 PREFIX := /usr/local
 CONFIGDIR := ${PREFIX}/share/containers
@@ -32,18 +32,18 @@ define go-get
 endef
 
 define go-build
-	GOOS=$(1) GOARCH=$(2) $(GO) build -tags $(BUILDTAGS) ./...
+	GOOS=$(1) GOARCH=$(2) $(GO) build -tags "$(3)" ./...
 endef
 
 .PHONY:
 build-cross:
-	$(call go-build,linux,386)
-	$(call go-build,linux,arm)
-	$(call go-build,linux,arm64)
-	$(call go-build,linux,ppc64le)
-	$(call go-build,linux,s390x)
-	$(call go-build,windows,amd64)
-	$(call go-build,windows,386)
+	$(call go-build,linux,386,${BUILDTAGS})
+	$(call go-build,linux,arm,${BUILDTAGS})
+	$(call go-build,linux,arm64,${BUILDTAGS})
+	$(call go-build,linux,ppc64le,${BUILDTAGS})
+	$(call go-build,linux,s390x,${BUILDTAGS})
+	$(call go-build,windows,amd64,remote ${BUILDTAGS})
+	$(call go-build,windows,386,remote ${BUILDTAGS})
 
 .PHONY: all
 all: build-amd64 build-386
@@ -72,10 +72,9 @@ vendor-in-container:
 
 .PHONY: vendor
 vendor:
-	export GO111MODULE=on \
-		$(GO) mod tidy && \
-		$(GO) mod vendor && \
-		$(GO) mod verify
+	GO111MODULE=on $(GO) mod tidy
+	GO111MODULE=on $(GO) mod vendor
+	GO111MODULE=on $(GO) mod verify
 
 .PHONY: install.tools
 install.tools: .install.golangci-lint .install.md2man
@@ -104,6 +103,7 @@ test: test-unit
 .PHONY: test-unit
 test-unit:
 	go test -v $(PROJECT)/pkg/...
+	go test --tags remote -v $(PROJECT)/pkg/...
 
 clean: ## Clean artifacts
 	$(MAKE) -C docs clean
