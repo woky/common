@@ -1,3 +1,9 @@
+golang-github-containers-common (0.8.1+ds1-2) experimental; urgency=medium
+
+  * Tighten build-dependencies on containers-storage
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 12 Jul 2020 21:21:03 -0400
+
 golang-github-containers-common (0.8.1+ds1-1) experimental; urgency=medium
 
   * Initial release (Closes: #958426)

@@ -7,7 +7,7 @@ Priority: optional
 Build-Depends: debhelper-compat (= 12),
                dh-golang,
                golang-any,
-               golang-github-containers-storage-dev,
+               golang-github-containers-storage-dev (>> 1.18),
                golang-github-docker-docker-dev,
                golang-github-docker-go-units-dev,
                golang-github-onsi-ginkgo-dev,
