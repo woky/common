@@ -1,15 +1,14 @@
 package config
 
 import (
-	"io/ioutil"
 	"os"
-	"path"
 	"sort"
 	"strings"
 
+	"github.com/containers/common/pkg/apparmor"
 	"github.com/containers/common/pkg/capabilities"
 	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 	selinux "github.com/opencontainers/selinux/go-selinux"
 )
 
@@ -23,9 +22,9 @@ var _ = Describe("Config", func() {
 			defaultConfig, err := NewConfig("")
 
 			// Then
-			Expect(err).To(BeNil())
-			Expect(defaultConfig.Containers.ApparmorProfile).To(Equal("container-default"))
-			Expect(defaultConfig.Containers.PidsLimit).To(BeEquivalentTo(2048))
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defaultConfig.Containers.ApparmorProfile).To(gomega.Equal(apparmor.Profile))
+			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
 		})
 
 		It("should succeed with devices", func() {
@@ -40,73 +39,7 @@ var _ = Describe("Config", func() {
 			err := sut.Containers.Validate()
 
 			// Then
-			Expect(err).To(BeNil())
-		})
-
-		It("should fail on wrong DefaultUlimits", func() {
-			// Given
-			sut.Containers.DefaultUlimits = []string{invalidPath}
-
-			// When
-			err := sut.Containers.Validate()
-
-			// Then
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("should fail on wrong invalid device specification", func() {
-			// Given
-			sut.Containers.Devices = []string{"::::"}
-
-			// When
-			err := sut.Containers.Validate()
-
-			// Then
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("should fail on invalid device", func() {
-			// Given
-			sut.Containers.Devices = []string{invalidPath}
-
-			// When
-			err := sut.Containers.Validate()
-
-			// Then
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("should fail on invalid device mode", func() {
-			// Given
-			sut.Containers.Devices = []string{"/dev/null:/dev/null:abc"}
-
-			// When
-			err := sut.Containers.Validate()
-
-			// Then
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("should fail on invalid first device", func() {
-			// Given
-			sut.Containers.Devices = []string{"wrong:/dev/null:rw"}
-
-			// When
-			err := sut.Containers.Validate()
-
-			// Then
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("should fail on invalid second device", func() {
-			// Given
-			sut.Containers.Devices = []string{"/dev/null:wrong:rw"}
-
-			// When
-			err := sut.Containers.Validate()
-
-			// Then
-			Expect(err).NotTo(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
 		It("should fail wrong max log size", func() {
@@ -117,7 +50,7 @@ var _ = Describe("Config", func() {
 			err := sut.Validate()
 
 			// Then
-			Expect(err).NotTo(BeNil())
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		It("should succeed with valid shm size", func() {
@@ -128,7 +61,7 @@ var _ = Describe("Config", func() {
 			err := sut.Validate()
 
 			// Then
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 
 			// Given
 			sut.Containers.ShmSize = "64m"
@@ -137,7 +70,7 @@ var _ = Describe("Config", func() {
 			err = sut.Validate()
 
 			// Then
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
 		It("should fail wrong shm size", func() {
@@ -148,18 +81,18 @@ var _ = Describe("Config", func() {
 			err := sut.Validate()
 
 			// Then
-			Expect(err).NotTo(BeNil())
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		It("Check SELinux settings", func() {
 			if selinux.GetEnabled() {
 				sut.Containers.EnableLabeling = true
-				Expect(sut.Containers.Validate()).To(BeNil())
-				Expect(selinux.GetEnabled()).To(BeTrue())
+				gomega.Expect(sut.Containers.Validate()).To(gomega.BeNil())
+				gomega.Expect(selinux.GetEnabled()).To(gomega.BeTrue())
 
 				sut.Containers.EnableLabeling = false
-				Expect(sut.Containers.Validate()).To(BeNil())
-				Expect(selinux.GetEnabled()).To(BeFalse())
+				gomega.Expect(sut.Containers.Validate()).To(gomega.BeNil())
+				gomega.Expect(selinux.GetEnabled()).To(gomega.BeFalse())
 			}
 
 		})
@@ -173,79 +106,8 @@ var _ = Describe("Config", func() {
 			err := sut.Network.Validate()
 
 			// Then
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
-
-		It("should fail during runtime", func() {
-			validDirPath, err := ioutil.TempDir("", "config-empty")
-			if err != nil {
-				panic(err)
-			}
-			defer os.RemoveAll(validDirPath)
-			// Given
-			sut.Network.NetworkConfigDir = validDirPath
-			tmpDir := path.Join(os.TempDir(), "cni-test")
-			sut.Network.CNIPluginDirs = []string{tmpDir}
-			defer os.RemoveAll(tmpDir)
-
-			// When
-			err = sut.Network.Validate()
-
-			// Then
-			Expect(err).ToNot(BeNil())
-		})
-
-		It("should fail on invalid NetworkConfigDir", func() {
-			// Given
-			tmpfile := path.Join(os.TempDir(), "wrong-file")
-			file, err := os.Create(tmpfile)
-			Expect(err).To(BeNil())
-			file.Close()
-			defer os.Remove(tmpfile)
-			sut.Network.NetworkConfigDir = tmpfile
-			sut.Network.CNIPluginDirs = []string{}
-
-			// When
-			err = sut.Network.Validate()
-
-			// Then
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("should fail on invalid CNIPluginDirs", func() {
-			validDirPath, err := ioutil.TempDir("", "config-empty")
-			if err != nil {
-				panic(err)
-			}
-			defer os.RemoveAll(validDirPath)
-			// Given
-			sut.Network.NetworkConfigDir = validDirPath
-			sut.Network.CNIPluginDirs = []string{invalidPath}
-
-			// When
-			err = sut.Network.Validate()
-
-			// Then
-			Expect(err).NotTo(BeNil())
-		})
-
-		It("should fail in validating invalid PluginDir", func() {
-			validDirPath, err := ioutil.TempDir("", "config-empty")
-			if err != nil {
-				panic(err)
-			}
-			defer os.RemoveAll(validDirPath)
-			// Given
-			sut.Network.NetworkConfigDir = validDirPath
-			sut.Network.CNIPluginDirs = []string{invalidPath}
-
-			// When
-			err = sut.Network.Validate()
-
-			// Then
-			Expect(err).ToNot(BeNil())
-		})
-
 	})
 
 	Describe("readConfigFromFile", func() {
@@ -264,6 +126,8 @@ var _ = Describe("Config", func() {
 					"/usr/local/sbin/kata-runtime",
 					"/sbin/kata-runtime",
 					"/bin/kata-runtime",
+					"/usr/bin/kata-qemu",
+					"/usr/bin/kata-fc",
 				},
 				"runc": {
 					"/usr/bin/runc",
@@ -292,13 +156,13 @@ var _ = Describe("Config", func() {
 			}
 
 			// Then
-			Expect(err).To(BeNil())
-			Expect(defaultConfig.Engine.CgroupManager).To(Equal("systemd"))
-			Expect(defaultConfig.Containers.Env).To(BeEquivalentTo(envs))
-			Expect(defaultConfig.Containers.PidsLimit).To(BeEquivalentTo(2048))
-			Expect(defaultConfig.Network.CNIPluginDirs).To(Equal(pluginDirs))
-			Expect(defaultConfig.Engine.NumLocks).To(BeEquivalentTo(2048))
-			Expect(defaultConfig.Engine.OCIRuntimes).To(Equal(OCIRuntimeMap))
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defaultConfig.Engine.CgroupManager).To(gomega.Equal("systemd"))
+			gomega.Expect(defaultConfig.Containers.Env).To(gomega.BeEquivalentTo(envs))
+			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
+			gomega.Expect(defaultConfig.Network.CNIPluginDirs).To(gomega.Equal(pluginDirs))
+			gomega.Expect(defaultConfig.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
+			gomega.Expect(defaultConfig.Engine.OCIRuntimes).To(gomega.Equal(OCIRuntimeMap))
 		})
 
 		It("should succeed with commented out configuration", func() {
@@ -308,7 +172,7 @@ var _ = Describe("Config", func() {
 			_, err := readConfigFromFile("testdata/containers_comment.conf", &conf)
 
 			// Then
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 
 		It("should fail when file does not exist", func() {
@@ -318,7 +182,7 @@ var _ = Describe("Config", func() {
 			_, err := readConfigFromFile("/invalid/file", &conf)
 
 			// Then
-			Expect(err).NotTo(BeNil())
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		It("should fail when toml decode fails", func() {
@@ -328,7 +192,7 @@ var _ = Describe("Config", func() {
 			_, err := readConfigFromFile("config.go", &conf)
 
 			// Then
-			Expect(err).NotTo(BeNil())
+			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 	})
 
@@ -371,13 +235,13 @@ var _ = Describe("Config", func() {
 			// When
 			config, err := NewConfig("")
 			// Then
-			Expect(err).To(BeNil())
-			Expect(config.Containers.ApparmorProfile).To(Equal("container-default"))
-			Expect(config.Containers.PidsLimit).To(BeEquivalentTo(2048))
-			Expect(config.Containers.Env).To(BeEquivalentTo(envs))
-			Expect(config.Network.CNIPluginDirs).To(Equal(pluginDirs))
-			Expect(config.Engine.NumLocks).To(BeEquivalentTo(2048))
-			Expect(config.Engine.OCIRuntimes["runc"]).To(Equal(OCIRuntimeMap["runc"]))
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal(apparmor.Profile))
+			gomega.Expect(config.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
+			gomega.Expect(config.Containers.Env).To(gomega.BeEquivalentTo(envs))
+			gomega.Expect(config.Network.CNIPluginDirs).To(gomega.Equal(pluginDirs))
+			gomega.Expect(config.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
+			gomega.Expect(config.Engine.OCIRuntimes["runc"]).To(gomega.Equal(OCIRuntimeMap["runc"]))
 		})
 
 		It("verify getDefaultEnv", func() {
@@ -388,20 +252,20 @@ var _ = Describe("Config", func() {
 			// When
 			config, err := Default()
 			// Then
-			Expect(err).To(BeNil())
-			Expect(config.GetDefaultEnv()).To(BeEquivalentTo(envs))
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(config.GetDefaultEnv()).To(gomega.BeEquivalentTo(envs))
 			config.Containers.HTTPProxy = true
-			Expect(config.GetDefaultEnv()).To(BeEquivalentTo(envs))
+			gomega.Expect(config.GetDefaultEnv()).To(gomega.BeEquivalentTo(envs))
 			os.Setenv("HTTP_PROXY", "localhost")
 			os.Setenv("FOO", "BAR")
 			newenvs := []string{"HTTP_PROXY=localhost"}
 			envs = append(newenvs, envs...)
-			Expect(config.GetDefaultEnv()).To(BeEquivalentTo(envs))
+			gomega.Expect(config.GetDefaultEnv()).To(gomega.BeEquivalentTo(envs))
 			config.Containers.HTTPProxy = false
 			config.Containers.EnvHost = true
 			envString := strings.Join(config.GetDefaultEnv(), ",")
-			Expect(envString).To(ContainSubstring("FOO=BAR"))
-			Expect(envString).To(ContainSubstring("HTTP_PROXY=localhost"))
+			gomega.Expect(envString).To(gomega.ContainSubstring("FOO=BAR"))
+			gomega.Expect(envString).To(gomega.ContainSubstring("HTTP_PROXY=localhost"))
 		})
 
 		It("should success with valid user file path", func() {
@@ -409,9 +273,9 @@ var _ = Describe("Config", func() {
 			// When
 			config, err := NewConfig("testdata/containers_default.conf")
 			// Then
-			Expect(err).To(BeNil())
-			Expect(config.Containers.ApparmorProfile).To(Equal("container-default"))
-			Expect(config.Containers.PidsLimit).To(BeEquivalentTo(2048))
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal("container-default"))
+			gomega.Expect(config.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
 		})
 
 		It("contents of passed-in file should override others", func() {
@@ -427,9 +291,9 @@ var _ = Describe("Config", func() {
 				os.Unsetenv("CONTAINERS_CONF")
 			}
 			// Then
-			Expect(err).To(BeNil())
-			Expect(config).ToNot(BeNil())
-			Expect(config.Containers.ApparmorProfile).To(Equal("overridden-default"))
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(config).ToNot(gomega.BeNil())
+			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal("overridden-default"))
 		})
 
 		It("should fail with invalid value", func() {
@@ -437,8 +301,8 @@ var _ = Describe("Config", func() {
 			// When
 			config, err := NewConfig("testdata/containers_invalid.conf")
 			// Then
-			Expect(err).ToNot(BeNil())
-			Expect(config).To(BeNil())
+			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(config).To(gomega.BeNil())
 		})
 
 		It("Test Capabilities call", func() {
@@ -446,25 +310,28 @@ var _ = Describe("Config", func() {
 			// When
 			config, err := NewConfig("")
 			// Then
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 			var addcaps, dropcaps []string
-			caps := config.Capabilities("0", addcaps, dropcaps)
+			caps, err := config.Capabilities("0", addcaps, dropcaps)
+			gomega.Expect(err).To(gomega.BeNil())
 			sort.Strings(caps)
 			defaultCaps := config.Containers.DefaultCapabilities
 			sort.Strings(defaultCaps)
-			Expect(caps).To(BeEquivalentTo(defaultCaps))
+			gomega.Expect(caps).To(gomega.BeEquivalentTo(defaultCaps))
 
 			// Add all caps
 			addcaps = []string{"all"}
-			caps = config.Capabilities("root", addcaps, dropcaps)
+			caps, err = config.Capabilities("root", addcaps, dropcaps)
+			gomega.Expect(err).To(gomega.BeNil())
 			sort.Strings(caps)
-			Expect(caps).ToNot(BeEquivalentTo(capabilities.AllCapabilities()))
+			gomega.Expect(caps).To(gomega.BeEquivalentTo(capabilities.AllCapabilities()))
 
 			// Drop all caps
 			dropcaps = []string{"all"}
-			caps = config.Capabilities("", addcaps, dropcaps)
+			caps, err = config.Capabilities("", addcaps, dropcaps)
+			gomega.Expect(err).To(gomega.BeNil())
 			sort.Strings(caps)
-			Expect(caps).ToNot(BeEquivalentTo([]string{}))
+			gomega.Expect(caps).ToNot(gomega.BeEquivalentTo([]string{}))
 
 			config.Containers.DefaultCapabilities = []string{
 				"CAP_AUDIT_WRITE",
@@ -483,28 +350,39 @@ var _ = Describe("Config", func() {
 			// Add all caps
 			addcaps = []string{"CAP_NET_ADMIN", "CAP_SYS_ADMIN"}
 			dropcaps = []string{"CAP_FOWNER", "CAP_CHOWN"}
-			caps = config.Capabilities("", addcaps, dropcaps)
+			caps, err = config.Capabilities("", addcaps, dropcaps)
+			gomega.Expect(err).To(gomega.BeNil())
 			sort.Strings(caps)
-			Expect(caps).To(BeEquivalentTo(expectedCaps))
+			gomega.Expect(caps).To(gomega.BeEquivalentTo(expectedCaps))
 
-			caps = config.Capabilities("notroot", addcaps, dropcaps)
+			addcaps = []string{"NET_ADMIN", "cap_sys_admin"}
+			dropcaps = []string{"FOWNER", "chown"}
+			caps, err = config.Capabilities("", addcaps, dropcaps)
+			gomega.Expect(err).To(gomega.BeNil())
 			sort.Strings(caps)
-			Expect(caps).To(BeEquivalentTo(addcaps))
+			gomega.Expect(caps).To(gomega.BeEquivalentTo(expectedCaps))
+
+			expectedCaps = []string{"CAP_NET_ADMIN", "CAP_SYS_ADMIN"}
+			caps, err = config.Capabilities("notroot", addcaps, dropcaps)
+			gomega.Expect(err).To(gomega.BeNil())
+			sort.Strings(caps)
+			gomega.Expect(caps).To(gomega.BeEquivalentTo(expectedCaps))
 		})
 
 		It("should succeed with default pull_policy", func() {
 			err := sut.Engine.Validate()
-			Expect(err).To(BeNil())
-			Expect(sut.Engine.PullPolicy).To(Equal("missing"))
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(sut.Engine.PullPolicy).To(gomega.Equal("missing"))
 
 			sut.Engine.PullPolicy = DefaultPullPolicy
 			err = sut.Engine.Validate()
-			Expect(err).To(BeNil())
+			gomega.Expect(err).To(gomega.BeNil())
 		})
 		It("should fail with invalid pull_policy", func() {
 			sut.Engine.PullPolicy = "invalidPullPolicy"
 			err := sut.Engine.Validate()
-			Expect(err).ToNot(BeNil())
+			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 	})
+
 })
