@@ -11,5 +11,3 @@
 contrib/spec/podman.spec
 *.rpm
 *~
-
-.pc
