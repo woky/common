@@ -1,3 +1,9 @@
+golang-github-containers-common (0.14.6+ds1-1) unstable; urgency=medium
+
+  * New upstream version
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 26 Jul 2020 10:56:06 -0400
+
 golang-github-containers-common (0.14.4+ds1-2) unstable; urgency=medium
 
   * upload to unstable
