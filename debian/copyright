@@ -5,13 +5,35 @@ Files-Excluded:
   vendor
 
 Files: *
-Copyright: 2018 github.com/containers/common authors
+Copyright: 2018, github.com/containers/common authors
+License: Apache-2.0
+
+Files: CONTRIBUTING.md
+Copyright: 2004, 2006, The Linux Foundation and its contributors.
 License: Apache-2.0
 
 Files: debian/*
-Copyright: 2020 Reinhard Tartler <siretart@tauware.de>
+Copyright: 2020, Reinhard Tartler <siretart@tauware.de>
 License: Apache-2.0
 Comment: Debian packaging is licensed under the same terms as upstream
+
+Files: pkg/apparmor/apparmor_linux.go
+  pkg/apparmor/apparmor_linux_test.go
+Copyright: 2009-2012, Canonical Ltd.
+  1999-2008, Novell Inc.
+License: Apache-2.0
+
+Files: pkg/capabilities/capabilities.go
+Copyright: 2013-2018, Docker, Inc.
+License: Apache-2.0
+
+Files: pkg/seccomp/default_linux.go
+  pkg/seccomp/seccomp_linux.go
+  pkg/seccomp/seccomp_test.go
+  pkg/seccomp/seccomp_unsupported.go
+  pkg/seccomp/types.go
+Copyright: 2013-2018, Docker, Inc.
+License: Apache-2.0
 
 License: Apache-2.0
  Licensed under the Apache License, Version 2.0 (the "License");

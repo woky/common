@@ -1,3 +1,10 @@
+golang-github-containers-common (0.22.0+ds1-1) unstable; urgency=medium
+
+  * New upstream release
+  * debian/copyright: update using 'cme update dpkg-copyright'
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 22 Nov 2020 13:32:58 -0500
+
 golang-github-containers-common (0.14.10+ds1-1) unstable; urgency=medium
 
   * New upstream version 0.14.10+ds1

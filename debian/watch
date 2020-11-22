@@ -1,5 +1,10 @@
+# https://salsa.debian.org/snippets/95
+# uscan(1) configuration file.
 version=4
-opts="filenamemangle=s%(?:.*?)?v?(\d[\d.]*)\.tar\.gz%golang-github-containers-common-$1.tar.gz%,\
-      uversionmangle=s/(\d)[_\.\-\+]?(RC|rc|pre|dev|beta|alpha)[.]?(\d*)$/\$1~\$2\$3/,\
-      dversionmangle=s/\+ds\d*$//,repacksuffix=+ds1" \
-  https://github.com/containers/common/tags .*/v?(0\.14\.\S*)\.tar\.gz debian
+
+opts="\
+pgpmode=none,\
+repack,compression=xz,repacksuffix=+dfsg1,\
+dversionmangle=s{[+~]dfsg\d*}{},\
+" https://github.com/containers/common/releases \
+  .*/archive/v?(\d[\d\.]+)\.tar\.gz

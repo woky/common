@@ -157,6 +157,39 @@ var _ = Describe("Config Local", func() {
 		gomega.Expect(err).NotTo(gomega.BeNil())
 	})
 
+	It("should fail on bad timezone", func() {
+		// Given
+		sut.Containers.TZ = "foo"
+
+		// When
+		err := sut.Containers.Validate()
+
+		// Then
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	It("should succeed on good timezone", func() {
+		// Given
+		sut.Containers.TZ = "US/Eastern"
+
+		// When
+		err := sut.Containers.Validate()
+
+		// Then
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
+	It("should succeed on local timezone", func() {
+		// Given
+		sut.Containers.TZ = "local"
+
+		// When
+		err := sut.Containers.Validate()
+
+		// Then
+		gomega.Expect(err).To(gomega.BeNil())
+	})
+
 	It("should fail on wrong DefaultUlimits", func() {
 		// Given
 		sut.Containers.DefaultUlimits = []string{invalidPath}
@@ -166,6 +199,16 @@ var _ = Describe("Config Local", func() {
 
 		// Then
 		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	It("should return containers engine env", func() {
+		// Given
+		expectedEnv := []string{"http_proxy=internal.proxy.company.com", "foo=bar"}
+		// When
+		config, err := NewConfig("testdata/containers_default.conf")
+		// Then
+		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(config.Engine.Env).To(gomega.BeEquivalentTo(expectedEnv))
 	})
 
 	It("Expect Remote to be False", func() {
@@ -182,9 +225,19 @@ var _ = Describe("Config Local", func() {
 			"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 			"TERM=xterm",
 		}
+		// Given we do
+		oldContainersConf, envSet := os.LookupEnv("CONTAINERS_CONF")
+		os.Setenv("CONTAINERS_CONF", "/dev/null")
 
 		// When
 		config, err := Default()
+
+		// Undo that
+		if envSet {
+			os.Setenv("CONTAINERS_CONF", oldContainersConf)
+		} else {
+			os.Unsetenv("CONTAINERS_CONF")
+		}
 		// Then
 		gomega.Expect(err).To(gomega.BeNil())
 		gomega.Expect(config.GetDefaultEnv()).To(gomega.BeEquivalentTo(envs))
@@ -207,6 +260,12 @@ var _ = Describe("Config Local", func() {
 		oldContainersConf, envSet := os.LookupEnv("CONTAINERS_CONF")
 		os.Setenv("CONTAINERS_CONF", tmpfile)
 		config, err := ReadCustomConfig()
+		// Undo that
+		if envSet {
+			os.Setenv("CONTAINERS_CONF", oldContainersConf)
+		} else {
+			os.Unsetenv("CONTAINERS_CONF")
+		}
 		gomega.Expect(err).To(gomega.BeNil())
 		config.Containers.Devices = []string{"/dev/null:/dev/null:rw",
 			"/dev/sdc/",
@@ -218,12 +277,31 @@ var _ = Describe("Config Local", func() {
 		// Then
 		gomega.Expect(err).To(gomega.BeNil())
 		defer os.Remove(tmpfile)
-		// Undo that
-		if envSet {
-			os.Setenv("CONTAINERS_CONF", oldContainersConf)
-		} else {
-			os.Unsetenv("CONTAINERS_CONF")
-		}
 	})
+	It("Default Umask", func() {
+		// Given
+		// When
+		config, err := NewConfig("")
+		// Then
+		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(config.Containers.Umask).To(gomega.Equal("0022"))
+	})
+	It("Set Umask", func() {
+		// Given
+		// When
+		config, err := NewConfig("testdata/containers_default.conf")
+		// Then
+		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(config.Containers.Umask).To(gomega.Equal("0002"))
+	})
+	It("Should fail on bad Umask", func() {
+		// Given
+		sut.Containers.Umask = "88888"
 
+		// When
+		err := sut.Containers.Validate()
+
+		// Then
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
 })
