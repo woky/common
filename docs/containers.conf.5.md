@@ -76,7 +76,7 @@ Determines  whether  the  container will create CGroups.
 Options are:
   `enabled`   Enable cgroup support within container
   `disabled`  Disable cgroup support, will inherit cgroups from parent
-  `no-conmon` Container engine runs run without conmon
+  `no-conmon` Do not create a cgroup dedicated to conmon.
 
 **default_capabilities**=[]
 
@@ -267,6 +267,9 @@ Path to the directory where CNI configuration files are located.
 
 ## ENGINE TABLE
 The `engine` table contains configuration options used to set up container engines such as Podman and Buildah.
+
+**image_build_format**="oci"
+The default image format to building container images. Valid values are "oci" (default) or "docker".
 
 **cgroup_check**=false
 
