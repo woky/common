@@ -6,6 +6,7 @@ Testsuite: autopkgtest-pkg-go
 Priority: optional
 Build-Depends: debhelper-compat (= 12),
                dh-golang,
+               go-md2man,
                golang-any,
                golang-github-containers-image-dev (>> 5.7~~),
                golang-github-containers-storage-dev (>> 1.23.5~~),
@@ -30,7 +31,8 @@ XS-Go-Import-Path: github.com/containers/common
 
 Package: golang-github-containers-common
 Architecture: all
-Depends: ${misc:Depends}
+Depends: golang-github-containers-image,
+         ${misc:Depends}
 Description: Common files for github.com/containers repositories
  This package contains common configuration files for use by
  other container projects.

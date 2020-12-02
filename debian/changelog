@@ -1,3 +1,12 @@
+golang-github-containers-common (0.26.3+ds1-2) unstable; urgency=medium
+
+  * Install containers.conf(5)
+  * Install shortnames.conf
+  * Install registries.conf
+  * Declare depends on golang-github-containers-image
+
+ -- Reinhard Tartler <siretart@tauware.de>  Wed, 02 Dec 2020 16:56:21 -0500
+
 golang-github-containers-common (0.26.3+ds1-1) unstable; urgency=medium
 
   * New upstream release
