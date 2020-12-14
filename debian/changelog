@@ -1,3 +1,10 @@
+golang-github-containers-common (0.28.1+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+  * Backport upstream patch to fixup makefile generation
+
+ -- Reinhard Tartler <siretart@tauware.de>  Mon, 14 Dec 2020 12:05:45 -0500
+
 golang-github-containers-common (0.26.3+ds1-2) unstable; urgency=medium
 
   * Install containers.conf(5)
