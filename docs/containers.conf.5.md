@@ -164,9 +164,14 @@ Options are:
   `private` Create private IPC Namespace for the container.
   `host`    Share host IPC Namespace with the container.
 
+**keyring**=true
+
+Indicates whether the container engines create a kernel keyring for use within
+the container.
+
 **label**=true
 
-Indicates whether the container engines use MAC(SELinux) container separation via via labeling. Flag is ignored on disabled systems.
+Indicates whether the container engine uses MAC(SELinux) container separation via labeling. This option is ignored on disabled systems.
 
 **log_driver**="k8s-file"
 
@@ -413,6 +418,10 @@ Pull image before running or creating a container. The default is **missing**.
 - **missing**: attempt to pull the latest image from the registries listed in registries.conf if a local image does not exist. Raise an error if the image is not in any listed registry and is not present locally.
 - **always**: pull the image from the first registry it is found in as listed in registries.conf. Raise an error if not found in the registries, even if the image is present locally.
 - **never**: do not pull the image from the registry, use only the local version. Raise an error if the image is not present locally.
+
+**remote** = false
+Indicates whether the application should be running in remote mode. This flag modifies the
+--remote option on container engines. Setting the flag to true will default `podman --remote=true` for access to the remote Podman service.
 
 **runtime**="crun"
 

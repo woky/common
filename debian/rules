@@ -8,7 +8,8 @@ export DH_GOLANG_INSTALL_ALL := 1
 
 override_dh_auto_install:
 	dh_auto_install --builddirectory=_build --buildsystem=golang
-	make -C docs docs install DESTDIR=$(CURDIR)/debian/golang-github-containers-common PREFIX=/usr
+	make -C docs docs GOMD2MAN=go-md2man
+	make -C docs install install DESTDIR=$(CURDIR)/debian/golang-github-containers-common PREFIX=/usr
 
 override_dh_auto_test:
 	DH_GOLANG_EXCLUDES="pkg/cgroupv2 pkg/config" \

@@ -113,6 +113,10 @@ type ContainersConfig struct {
 	// DNSSearches set default DNS search domains.
 	DNSSearches []string `toml:"dns_searches,omitempty"`
 
+	// EnableKeyring tells the container engines whether to create
+	// a kernel keyring for use within the container
+	EnableKeyring bool `toml:"keyring,omitempty"`
+
 	// EnableLabeling tells the container engines whether to use MAC
 	// Labeling to separate containers (SELinux)
 	EnableLabeling bool `toml:"label,omitempty"`
@@ -282,7 +286,7 @@ type EngineConfig struct {
 	PullPolicy string `toml:"pull_policy,omitempty"`
 
 	// Indicates whether the application should be running in Remote mode
-	Remote bool `toml:"-"`
+	Remote bool `toml:"remote,omitempty"`
 
 	// RemoteURI is deprecated, see ActiveService
 	// RemoteURI containers connection information used to connect to remote system.
