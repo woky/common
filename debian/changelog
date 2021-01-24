@@ -1,3 +1,11 @@
+golang-github-containers-common (0.33.1+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+  * Tighten dependencies on containers/storage, containers/image, runc and
+    opencontainers/selinux
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 24 Jan 2021 09:13:51 -0500
+
 golang-github-containers-common (0.28.1+ds1-1) experimental; urgency=medium
 
   * New upstream release

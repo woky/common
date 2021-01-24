@@ -184,7 +184,7 @@ func DefaultConfig() (*Config, error) {
 				"TERM=xterm",
 			},
 			EnvHost:        false,
-			HTTPProxy:      false,
+			HTTPProxy:      true,
 			Init:           false,
 			InitPath:       "",
 			IPCNS:          "private",
@@ -242,11 +242,6 @@ func defaultConfigFromMemory() (*EngineConfig, error) {
 	c.ImageDefaultTransport = _defaultTransport
 	c.StateType = BoltDBStateStore
 
-	c.OCIRuntime = "runc"
-	// If we're running on cgroupv2 v2, default to using crun.
-	if cgroup2, _ := cgroupv2.Enabled(); cgroup2 {
-		c.OCIRuntime = "crun"
-	}
 	c.ImageBuildFormat = "oci"
 
 	c.CgroupManager = defaultCgroupManager()
@@ -254,6 +249,15 @@ func defaultConfigFromMemory() (*EngineConfig, error) {
 
 	c.Remote = isRemote()
 	c.OCIRuntimes = map[string][]string{
+		"crun": {
+			"/usr/bin/crun",
+			"/usr/sbin/crun",
+			"/usr/local/bin/crun",
+			"/usr/local/sbin/crun",
+			"/sbin/crun",
+			"/bin/crun",
+			"/run/current-system/sw/bin/crun",
+		},
 		"runc": {
 			"/usr/bin/runc",
 			"/usr/sbin/runc",
@@ -263,15 +267,6 @@ func defaultConfigFromMemory() (*EngineConfig, error) {
 			"/bin/runc",
 			"/usr/lib/cri-o-runc/sbin/runc",
 			"/run/current-system/sw/bin/runc",
-		},
-		"crun": {
-			"/usr/bin/crun",
-			"/usr/sbin/crun",
-			"/usr/local/bin/crun",
-			"/usr/local/sbin/crun",
-			"/sbin/crun",
-			"/bin/crun",
-			"/run/current-system/sw/bin/crun",
 		},
 		"kata": {
 			"/usr/bin/kata-runtime",
@@ -284,6 +279,9 @@ func defaultConfigFromMemory() (*EngineConfig, error) {
 			"/usr/bin/kata-fc",
 		},
 	}
+	// Needs to be called after populating c.OCIRuntimes
+	c.OCIRuntime = c.findRuntime()
+
 	c.ConmonEnvVars = []string{
 		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 	}
@@ -322,7 +320,7 @@ func defaultConfigFromMemory() (*EngineConfig, error) {
 
 func defaultTmpDir() (string, error) {
 	if !unshare.IsRootless() {
-		return "/var/run/libpod", nil
+		return "/run/libpod", nil
 	}
 
 	runtimeDir, err := getRuntimeDir()
