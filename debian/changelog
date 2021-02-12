@@ -1,3 +1,9 @@
+golang-github-containers-common (0.33.4+ds1-1) unstable; urgency=medium
+
+  * New upstream point release, only focused changes for podman 3.0
+
+ -- Reinhard Tartler <siretart@tauware.de>  Fri, 12 Feb 2021 08:56:18 -0500
+
 golang-github-containers-common (0.33.1+ds1-3) unstable; urgency=medium
 
   * Upload to unstable
