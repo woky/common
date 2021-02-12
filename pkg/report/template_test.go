@@ -48,9 +48,9 @@ func TestNormalizeFormat(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"{{.ID}}\t{{.ID}}\n", "{{.ID}}\t{{.ID}}\n"},
-		{`{{.ID}}\t{{.ID}}\n`, "{{.ID}}\t{{.ID}}\n"},
-		{`{{.ID}} {{.ID}}\n`, "{{.ID}} {{.ID}}\n"},
+		{"{{.ID}}\t{{.ID}}", "{{.ID}}\t{{.ID}}\n"},
+		{`{{.ID}}\t{{.ID}}`, "{{.ID}}\t{{.ID}}\n"},
+		{`{{.ID}} {{.ID}}`, "{{.ID}} {{.ID}}\n"},
 		{`table {{.ID}}\t{{.ID}}`, "{{.ID}}\t{{.ID}}\n"},
 		{`table {{.ID}} {{.ID}}`, "{{.ID}}\t{{.ID}}\n"},
 	}
@@ -68,7 +68,6 @@ func TestTemplate_Parse(t *testing.T) {
 	testCase := []string{
 		"table {{.ID}}",
 		"table {{ .ID}}",
-		`table {{ .ID}}\n`,
 		"table {{ .ID}}\n",
 		"{{range .}}{{.ID}}{{end}}",
 		`{{range .}}{{.ID}}{{end}}`,
@@ -98,16 +97,57 @@ func TestTemplate_IsTable(t *testing.T) {
 	assert.True(t, tmpl.isTable)
 }
 
-func TestTemplate_Funcs(t *testing.T) {
+func TestTemplate_trim(t *testing.T) {
 	tmpl := NewTemplate("TestTemplate")
-	tmpl = tmpl.Funcs(map[string]interface{}{"ToLower": strings.ToLower})
-	tmpl, e := tmpl.Parse("{{.ID |ToLower}}")
+	tmpl, e := tmpl.Funcs(FuncMap{"trim": strings.TrimSpace}).Parse("{{.ID |trim}}")
 	assert.NoError(t, e)
 
 	var buf bytes.Buffer
 	err := tmpl.Execute(&buf, map[string]string{
-		"ID": "ident",
+		"ID": "ident  ",
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "ident\n", buf.String())
+}
+
+func TestTemplate_DefaultFuncs(t *testing.T) {
+	tmpl := NewTemplate("TestTemplate")
+	// Throw in trim function to ensure default 'join' is still available
+	tmpl, e := tmpl.Funcs(FuncMap{"trim": strings.TrimSpace}).Parse(`{{join .ID "\n"}}`)
+	assert.NoError(t, e)
+
+	var buf bytes.Buffer
+	err := tmpl.Execute(&buf, map[string][]string{
+		"ID": {"ident1", "ident2", "ident3"},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "ident1\nident2\nident3\n", buf.String())
+}
+
+func TestTemplate_ReplaceFuncs(t *testing.T) {
+	tmpl := NewTemplate("TestTemplate")
+	// yes, we're overriding upper with lower :-)
+	tmpl, e := tmpl.Funcs(FuncMap{"upper": strings.ToLower}).Parse(`{{.ID | lower}}`)
+	assert.NoError(t, e)
+
+	var buf bytes.Buffer
+	err := tmpl.Execute(&buf, map[string]string{
+		"ID": "IDENT",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "ident\n", buf.String())
+}
+
+func TestTemplate_json(t *testing.T) {
+	tmpl := NewTemplate("TestTemplate")
+	// yes, we're overriding upper with lower :-)
+	tmpl, e := tmpl.Parse(`{{json .ID}}`)
+	assert.NoError(t, e)
+
+	var buf bytes.Buffer
+	err := tmpl.Execute(&buf, map[string][]string{
+		"ID": {"ident1", "ident2", "ident3"},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, `["ident1","ident2","ident3"]`+"\n", buf.String())
 }
