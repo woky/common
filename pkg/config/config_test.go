@@ -302,6 +302,8 @@ var _ = Describe("Config", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(config).ToNot(gomega.BeNil())
 			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal("overridden-default"))
+			gomega.Expect(config.Engine.ImageParallelCopies).To(gomega.Equal(uint(10)))
+			gomega.Expect(config.Engine.ImageDefaultFormat).To(gomega.Equal("v2s2"))
 		})
 
 		It("should fail with invalid value", func() {
@@ -332,7 +334,9 @@ var _ = Describe("Config", func() {
 			caps, err = config.Capabilities("root", addcaps, dropcaps)
 			gomega.Expect(err).To(gomega.BeNil())
 			sort.Strings(caps)
-			gomega.Expect(caps).To(gomega.BeEquivalentTo(capabilities.AllCapabilities()))
+			boundingSet, err := capabilities.BoundingSet()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(caps).To(gomega.BeEquivalentTo(boundingSet))
 
 			// Drop all caps
 			dropcaps = []string{"all"}

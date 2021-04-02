@@ -1,8 +1,21 @@
+golang-github-containers-common (0.35.4+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Reinhard Tartler <siretart@tauware.de>  Fri, 02 Apr 2021 17:53:25 -0400
+
 golang-github-containers-common (0.33.4+ds1-1) unstable; urgency=medium
 
   * New upstream point release, only focused changes for podman 3.0
 
  -- Reinhard Tartler <siretart@tauware.de>  Fri, 12 Feb 2021 08:56:18 -0500
+
+golang-github-containers-common (0.34.2+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+  * Tighten dependencies on golang-github-containers-storage
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 09 Feb 2021 10:32:03 -0500
 
 golang-github-containers-common (0.33.1+ds1-3) unstable; urgency=medium
 

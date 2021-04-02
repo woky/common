@@ -24,7 +24,7 @@ Copyright: 2009-2012, Canonical Ltd.
 License: Apache-2.0
 
 Files: pkg/capabilities/capabilities.go
-Copyright: 2013-2018, Docker, Inc.
+Copyright: 2013-2021, Docker, Inc.
 License: Apache-2.0
 
 Files: pkg/report/camelcase/*
@@ -38,11 +38,12 @@ Copyright: 2018, github.com/containers/common authors
 License: Apache-2.0
 
 Files: pkg/seccomp/default_linux.go
+  pkg/seccomp/generate.go
   pkg/seccomp/seccomp_linux.go
   pkg/seccomp/seccomp_test.go
   pkg/seccomp/seccomp_unsupported.go
   pkg/seccomp/types.go
-Copyright: 2013-2018, Docker, Inc.
+Copyright: 2013-2021, Docker, Inc.
 License: Apache-2.0
 
 License: Apache-2.0
