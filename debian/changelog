@@ -1,3 +1,11 @@
+golang-github-containers-common (0.36.0+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+  * Install /usr/share/containers/seccomp.json,
+    thanks to Laurent Bigonville (Closes: #988443).
+
+ -- Reinhard Tartler <siretart@tauware.de>  Fri, 28 May 2021 13:21:37 -0400
+
 golang-github-containers-common (0.35.4+ds1-1) experimental; urgency=medium
 
   * New upstream release
