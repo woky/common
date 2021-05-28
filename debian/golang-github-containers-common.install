@@ -1,3 +1,4 @@
 debian/shortnames.conf /etc/containers/registries.conf.d
 pkg/config/containers.conf /usr/share/containers
+pkg/seccomp/seccomp.json /usr/share/containers
 debian/etc/containers/policy.json	/etc/containers/
