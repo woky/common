@@ -270,6 +270,11 @@ List of paths to directories where CNI plugin binaries are located.
 
 The network name of the default CNI network to attach pods to.
 
+**default_subnet**="10.88.0.0/16"
+
+The subnet to use for the default CNI network (named above in **default_network**).
+If the default network does not exist, it will be automatically created the first time a tool is run using this subnet.
+
 **network_config_dir**="/etc/cni/net.d/"
 
 Path to the directory where CNI configuration files are located.
@@ -388,6 +393,12 @@ Change the default only if you are sure of what you are doing, in general
 faster "shm" lock type.  You may need to run "podman system renumber" after you
 change the lock type.
 
+**machine_enabled**=false
+
+Indicates if Podman is running inside a VM via Podman Machine.
+Podman uses this value to do extra setup around networking from the
+container inside the VM to to host.
+
 **multi_image_archive**=false
 
 Allows for creating archives (e.g., tarballs) with more than one image.  Some container engines, such as Podman, interpret additional arguments as tags for one image and hence do not store more than one image.  The default behavior can be altered with this option.
@@ -439,7 +450,7 @@ Default OCI specific runtime in runtimes that will be used by default. Must
 refer to a member of the runtimes table. Default runtime will be searched for
 on the system using the priority: "crun", "runc", "kata".
 
-**runtime_supports_json**=["crun", "runc", "kata"]
+**runtime_supports_json**=["crun", "runc", "kata", "runsc"]
 
 The list of the OCI runtimes that support `--format=json`.
 

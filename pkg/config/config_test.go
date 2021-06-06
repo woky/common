@@ -140,6 +140,15 @@ var _ = Describe("Config", func() {
 					"/usr/bin/crun",
 					"/usr/local/bin/crun",
 				},
+				"runsc": {
+					"/usr/bin/runsc",
+					"/usr/sbin/runsc",
+					"/usr/local/bin/runsc",
+					"/usr/local/sbin/runsc",
+					"/bin/runsc",
+					"/sbin/runsc",
+					"/run/current-system/sw/bin/runsc",
+				},
 			}
 
 			pluginDirs := []string{
@@ -264,8 +273,17 @@ var _ = Describe("Config", func() {
 				"TERM=xterm",
 			}
 
+			// Given we do
+			oldContainersConf, envSet := os.LookupEnv("CONTAINERS_CONF")
+			os.Setenv("CONTAINERS_CONF", "/dev/null")
 			// When
 			config, err := NewConfig("")
+			// Undo that
+			if envSet {
+				os.Setenv("CONTAINERS_CONF", oldContainersConf)
+			} else {
+				os.Unsetenv("CONTAINERS_CONF")
+			}
 			// Then
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal(apparmor.Profile))
@@ -274,6 +292,7 @@ var _ = Describe("Config", func() {
 			gomega.Expect(config.Network.CNIPluginDirs).To(gomega.Equal(pluginDirs))
 			gomega.Expect(config.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(config.Engine.OCIRuntimes["runc"]).To(gomega.Equal(OCIRuntimeMap["runc"]))
+			gomega.Expect(config.LogDriver()).To(gomega.Equal("k8s-file"))
 		})
 
 		It("should success with valid user file path", func() {
@@ -340,7 +359,7 @@ var _ = Describe("Config", func() {
 
 			// Drop all caps
 			dropcaps = []string{"all"}
-			caps, err = config.Capabilities("", addcaps, dropcaps)
+			caps, err = config.Capabilities("", boundingSet, dropcaps)
 			gomega.Expect(err).To(gomega.BeNil())
 			sort.Strings(caps)
 			gomega.Expect(caps).ToNot(gomega.BeEquivalentTo([]string{}))

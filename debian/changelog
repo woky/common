@@ -1,3 +1,11 @@
+golang-github-containers-common (0.38.5+ds2-1) experimental; urgency=medium
+
+  * New upstream release, temporarily vendored libraries:
+    - github.com/jinzhu/copier
+    - github.com/disiqueira/gotree
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sat, 05 Jun 2021 21:59:53 -0400
+
 golang-github-containers-common (0.36.0+ds1-1) experimental; urgency=medium
 
   * New upstream release

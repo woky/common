@@ -12,5 +12,5 @@ override_dh_auto_install:
 	make -C docs install install DESTDIR=$(CURDIR)/debian/golang-github-containers-common PREFIX=/usr
 
 override_dh_auto_test:
-	DH_GOLANG_EXCLUDES="pkg/cgroupv2 pkg/config" \
+	DH_GOLANG_EXCLUDES="pkg/cgroupv2 pkg/config libimage" \
 	dh_auto_test
