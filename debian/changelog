@@ -1,3 +1,10 @@
+golang-github-containers-common (0.38.9+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+  * Disable LTO
+
+ -- Reinhard Tartler <siretart@tauware.de>  Thu, 10 Jun 2021 19:33:26 -0400
+
 golang-github-containers-common (0.38.5+ds2-1) experimental; urgency=medium
 
   * New upstream release, temporarily vendored libraries:
