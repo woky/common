@@ -1,3 +1,9 @@
+golang-github-containers-common (0.38.12+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Reinhard Tartler <siretart@tauware.de>  Mon, 28 Jun 2021 08:22:16 -0400
+
 golang-github-containers-common (0.38.9+ds1-1) experimental; urgency=medium
 
   * New upstream release
