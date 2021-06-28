@@ -4,7 +4,6 @@ Source: https://github.com/containers/common
 Files-Excluded:
   vendor
 Files-Included:
-  vendor/github.com/disiqueira
   vendor/github.com/jinzhu/copier
 
 Files: *
