@@ -6,8 +6,13 @@ export DH_GOLANG_INSTALL_ALL := 1
 # disable LTO, cf. https://wiki.debian.org/ToolChain/LTO
 export DEB_BUILD_MAINT_OPTIONS := optimize=-lto
 
+BUILDTAGS := containers_image_openpgp,systemd
+
 %:
 	dh $@ --builddirectory=_build --buildsystem=golang --with=golang
+
+override_dh_auto_build:
+	dh_auto_build -v  --builddirectory=_build -- -tags "$(BUILDTAGS)"
 
 override_dh_auto_install:
 	dh_auto_install --builddirectory=_build --buildsystem=golang

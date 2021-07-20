@@ -1,3 +1,9 @@
+golang-github-containers-common (0.38.16+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+
+ -- Reinhard Tartler <siretart@tauware.de>  Tue, 20 Jul 2021 08:22:16 -0400
+
 golang-github-containers-common (0.38.12+ds1-2) experimental; urgency=medium
 
   * golang-github-containers-common-dev: depend on disiqueria/gotree
