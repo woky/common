@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"sort"
@@ -11,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	selinux "github.com/opencontainers/selinux/go-selinux"
+	"github.com/sirupsen/logrus"
 )
 
 var _ = Describe("Config", func() {
@@ -329,6 +331,9 @@ var _ = Describe("Config", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(config).ToNot(gomega.BeNil())
 			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal("overridden-default"))
+			gomega.Expect(config.Containers.LogDriver).To(gomega.Equal("journald"))
+			gomega.Expect(config.Containers.LogTag).To(gomega.Equal("{{.Name}}|{{.ID}}"))
+			gomega.Expect(config.Containers.LogSizeMax).To(gomega.Equal(int64(100000)))
 			gomega.Expect(config.Engine.ImageParallelCopies).To(gomega.Equal(uint(10)))
 			gomega.Expect(config.Engine.ImageDefaultFormat).To(gomega.Equal("v2s2"))
 		})
@@ -595,6 +600,70 @@ var _ = Describe("Config", func() {
 
 			_, _, err = cfg.ActiveDestination()
 			gomega.Expect(err).Should(gomega.HaveOccurred())
+		})
+
+		It("test addConfigs", func() {
+			tmpFilePath := func(dir, prefix string) string {
+				file, err := ioutil.TempFile(dir, prefix)
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+				conf := file.Name() + ".conf"
+
+				os.Rename(file.Name(), conf)
+				return conf
+
+			}
+			configs := []string{
+				"test1",
+				"test2",
+			}
+			newConfigs, err := addConfigs("/bogus/path", configs)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			gomega.Expect(newConfigs).To(gomega.Equal(configs))
+
+			dir, err := ioutil.TempDir("", "configTest")
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			defer os.RemoveAll(dir)
+			file1 := tmpFilePath(dir, "b")
+			file2 := tmpFilePath(dir, "a")
+			file3 := tmpFilePath(dir, "2")
+			file4 := tmpFilePath(dir, "1")
+			// create a file in dir that is not a .conf to make sure
+			// it does not show up in configs
+			_, err = ioutil.TempFile(dir, "notconf")
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			subdir, err := ioutil.TempDir(dir, "")
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			// create a file in subdir, to make sure it does not
+			// show up in configs
+			_, err = ioutil.TempFile(subdir, "")
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+			newConfigs, err = addConfigs(dir, configs)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			testConfigs := append(configs, []string{file4, file3, file2, file1}...)
+			gomega.Expect(newConfigs).To(gomega.Equal(testConfigs))
+		})
+
+		It("test config errors", func() {
+			conf := Config{}
+			content := bytes.NewBufferString("")
+			logrus.SetOutput(content)
+			err := readConfigFromFile("testdata/containers_broken.conf", &conf)
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(conf.Containers.NetNS).To(gomega.Equal("bridge"))
+			gomega.Expect(conf.Containers.Umask).To(gomega.Equal("0002"))
+			gomega.Expect(content).To(gomega.ContainSubstring("Failed to decode the keys [\\\"foo\\\" \\\"containers.image_default_transport\\\"] from \\\"testdata/containers_broken.conf\\\""))
+			logrus.SetOutput(os.Stderr)
+		})
+
+		It("test default config errors", func() {
+			conf := Config{}
+			content := bytes.NewBufferString("")
+			logrus.SetOutput(content)
+			err := readConfigFromFile("containers.conf", &conf)
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(content.String()).To(gomega.Equal(""))
+			logrus.SetOutput(os.Stderr)
 		})
 	})
 

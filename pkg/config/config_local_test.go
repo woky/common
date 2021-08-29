@@ -321,4 +321,52 @@ var _ = Describe("Config Local", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 		gomega.Expect(config2.Engine.MachineEnabled).To(gomega.Equal(true))
 	})
+
+	It("Rootless networking", func() {
+		// Given
+		config, err := NewConfig("")
+		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(config.Containers.RootlessNetworking).To(gomega.Equal("slirp4netns"))
+		// When
+		config2, err := NewConfig("testdata/containers_default.conf")
+		// Then
+		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(config2.Containers.RootlessNetworking).To(gomega.Equal("cni"))
+	})
+
+	It("default netns", func() {
+		// Given
+		config, err := NewConfig("")
+		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(config.Containers.NetNS).To(gomega.Equal(""))
+		// When
+		config2, err := NewConfig("testdata/containers_default.conf")
+		// Then
+		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(config2.Containers.NetNS).To(gomega.Equal("bridge"))
+	})
+
+	It("should have a default secret driver", func() {
+		// Given
+		path := ""
+		// When
+		config, err := NewConfig(path)
+		gomega.Expect(err).To(gomega.BeNil())
+		// Then
+		gomega.Expect(config.Secrets.Driver).To(gomega.Equal("file"))
+	})
+
+	It("should be possible to override the secret driver and options", func() {
+		// Given
+		path := "testdata/containers_override.conf"
+		// When
+		config, err := NewConfig(path)
+		gomega.Expect(err).To(gomega.BeNil())
+		// Then
+		gomega.Expect(config.Secrets.Driver).To(gomega.Equal("pass"))
+		gomega.Expect(config.Secrets.Opts).To(gomega.Equal(map[string]string{
+			"key":  "foo@bar",
+			"root": "/srv/password-store",
+		}))
+	})
 })

@@ -10,11 +10,15 @@ and modify the defaults for running containers on the host. containers.conf uses
 a TOML format that can be easily modified and versioned.
 
 Container engines read the /usr/share/containers/containers.conf and
-/etc/containers/containers.conf files if they exists.  When running in rootless
-mode, they also read $HOME/.config/containers/containers.conf files.
+/etc/containers/containers.conf, and /etc/containers/containers.conf.d/*.conf files
+if they exist.  When running in rootless mode, they also read
+$HOME/.config/containers/containers.conf and
+$HOME/.config/containers/containers.conf.d/*.conf files.
 
 Fields specified in containers conf override the default options, as well as
 options in previously read containers.conf files.
+
+Config files in the `.d` directories, are added in alpha numeric sorted order and must end in `.conf`.
 
 Not all options are supported in all container engines.
 
@@ -186,6 +190,10 @@ that no size limit is imposed. If it is positive, it must be >= 8192 to
 match/exceed conmon's read buffer. The file is truncated and re-opened so the
 limit is never exceeded.
 
+**log_tag**=""
+
+Default format tag for container log messages.  This is useful for creating a specific tag for container log messages. Container log messages default to using the truncated container ID as a tag.
+
 **netns**="private"
 
 Default way to to create a NET namespace for the container.
@@ -210,6 +218,15 @@ Options are:
 
 Maximum number of processes allowed in a container. 0 indicates that no limit
 is imposed.
+
+**prepare_volume_on_create**=false
+
+Copy the content from the underlying image into the newly created volume when the container is created instead of when it is started. If `false`, the container engine will not copy the content until the container is started. Setting it to `true` may have negative performance implications.
+
+**rootless_networking**="slirp4netns"
+
+Set type of networking rootless containers should use.  Valid options are `slirp4netns`
+or `cni`.
 
 **seccomp_profile**="/usr/share/containers/seccomp.json"
 
@@ -292,10 +309,6 @@ The `engine` table contains configuration options used to set up container engin
 **active_service**=""
 
 Name of destination for accessing the Podman service. See SERVICE DESTINATION TABLE below.
-
-**cgroup_check**=false
-
-CgroupCheck indicates the configuration has been rewritten after an upgrade to Fedora 31 to change the default OCI runtime for cgroupsv2.
 
 **cgroup_manager**="systemd"
 
@@ -454,13 +467,13 @@ on the system using the priority: "crun", "runc", "kata".
 
 The list of the OCI runtimes that support `--format=json`.
 
-**runtime_supports_nocgroups**=["crun"]
-
-The list of OCI runtimes that support running containers without CGroups.
-
 **runtime_supports_kvm**=["kata"]
 
 The list of OCI runtimes that support running containers with KVM separation.
+
+**runtime_supports_nocgroups**=["crun"]
+
+The list of OCI runtimes that support running containers without CGroups.
 
 **static_dir**="/var/lib/containers/storage/libpod"
 
@@ -476,6 +489,19 @@ Number of seconds to wait for container to exit before sending kill signal.
 
 The path to a temporary directory to store per-boot container.
 Must be a tmpfs (wiped after reboot).
+
+**volume_path**="/var/lib/containers/storage/volumes"
+
+Directory where named volumes will be created in using the default volume
+driver.
+By default this will be configured relative to where containers/storage store
+containers. This convention is followed by the default volume driver, but may
+not be by other drivers.
+
+**chown_copied_files**=true
+
+Determines whether file copied into a container will have changed ownership to
+the primary uid/gid of the container.
 
 ## SERVICE DESTINATION TABLE
 The `service_destinations` table contains configuration options used to set up remote connections to the podman service for the podman API.
@@ -495,20 +521,27 @@ URI to access the Podman service
 
 Path to file containing ssh identity key
 
-**volume_path**="/var/lib/containers/storage/volumes"
-
-Directory where named volumes will be created in using the default volume
-driver.
-By default this will be configured relative to where containers/storage store
-containers. This convention is followed by the default volume driver, but may
-not be by other drivers.
-
 **[engine.volume_plugins]**
 
 A table of all the enabled volume plugins on the system. Volume plugins can be
 used as the backend for Podman named volumes. Individual plugins are specified
 below, as a map of the plugin name (what the plugin will be called) to its path
 (filepath of the plugin's unix socket).
+
+
+## SECRET TABLE
+The `secret` table contains settings for the configuration of the secret subsystem.
+
+**driver**=file
+
+Name of the secret driver to be used.
+Currently valid values are:
+  * file
+  * pass
+
+**[secrets.opts]**
+
+The driver specific options object.
 
 # FILES
 
@@ -518,8 +551,7 @@ Distributions often provide a `/usr/share/containers/containers.conf` file to
 define default container configuration. Administrators can override fields in
 this file by creating `/etc/containers/containers.conf` to specify their own
 configuration. Rootless users can further override fields in the config by
-creating a config file stored in the
-`$HOME/.config/containers/containers.conf` file.
+creating a config file stored in the `$HOME/.config/containers/containers.conf` file.
 
 If the `CONTAINERS_CONF` path environment variable is set, just
 this path will be used.  This is primarily used for testing.
