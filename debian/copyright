@@ -3,8 +3,6 @@ Upstream-Name: common
 Source: https://github.com/containers/common
 Files-Excluded:
   vendor
-Files-Included:
-  vendor/github.com/jinzhu/copier
 
 Files: *
 Copyright: 2018, github.com/containers/common authors
@@ -51,29 +49,6 @@ License: Apache-2.0
 Files: pkg/signal/signal_linux.go
   pkg/signal/signal_linux_mipsx.go
 Copyright: 2013-2021, Docker, Inc.
-License: Apache-2.0
-
-Files: vendor/*
-Copyright: 2013-2018, Diego Siqueira
-License: Expat
-
-Files: vendor/github.com/disiqueira/gotree/v3/go.mod
-  vendor/github.com/disiqueira/gotree/v3/gotree.go
-Copyright: 2018, github.com/containers/common authors
-License: Apache-2.0
-
-Files: vendor/github.com/jinzhu/*
-Copyright: 2018, github.com/containers/common authors
-License: Expat
-
-Files: vendor/github.com/jinzhu/copier/License
-Copyright: 2015, Jinzhu
-License: Expat
-
-Files: vendor/github.com/jinzhu/copier/copier.go
-  vendor/github.com/jinzhu/copier/errors.go
-  vendor/github.com/jinzhu/copier/go.mod
-Copyright: 2018, github.com/containers/common authors
 License: Apache-2.0
 
 License: Apache-2.0

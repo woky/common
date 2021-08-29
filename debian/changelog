@@ -1,3 +1,13 @@
+golang-github-containers-common (0.42.1+ds1-1) unstable; urgency=medium
+
+  * New upstream release
+  * Use distro copy of golang-github-jinzhu-copier-dev
+  * Add gpg for tests
+  * disable the passdriver tests
+  * Bump dependency on runc
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 29 Aug 2021 08:33:45 +0200
+
 golang-github-containers-common (0.38.16+ds1-1) experimental; urgency=medium
 
   * New upstream release
