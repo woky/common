@@ -7,7 +7,7 @@ Priority: optional
 Build-Depends: debhelper-compat (= 12),
                dh-golang,
                go-md2man,
-               golang-github-containers-image-dev (>> 5.10~~),
+               golang-github-containers-image-dev (>> 5.15~~),
                golang-github-containers-storage-dev (>> 1.28~~),
                golang-github-disiqueira-gotree-dev,
                golang-github-docker-docker-dev,
@@ -25,7 +25,7 @@ Build-Depends: debhelper-compat (= 12),
                golang-logrus-dev,
                golang-toml-dev,
                gpg,
-Standards-Version: 4.5.0
+Standards-Version: 4.6.0
 Vcs-Browser: https://salsa.debian.org/go-team/packages/golang-github-containers-common
 Vcs-Git: https://salsa.debian.org/go-team/packages/golang-github-containers-common.git
 Homepage: https://github.com/containers/common
@@ -43,7 +43,7 @@ Description: Common files for github.com/containers repositories
 
 Package: golang-github-containers-common-dev
 Architecture: all
-Depends: golang-github-containers-image-dev (>> 5.10~~),
+Depends: golang-github-containers-image-dev (>> 5.15~~),
          golang-github-containers-storage-dev (>> 1.28~~),
          golang-github-disiqueira-gotree-dev,
          golang-github-docker-docker-dev,

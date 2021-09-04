@@ -1,3 +1,13 @@
+golang-github-containers-common (0.42.1+ds1-2) unstable; urgency=medium
+
+  * debian/control:
+    - Tighten dependency on containers/image
+    - Bump standards version
+  * debian/watch: fix github url pattern
+  * Fix section in the generated manpage
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sat, 04 Sep 2021 09:56:21 +0200
+
 golang-github-containers-common (0.42.1+ds1-1) unstable; urgency=medium
 
   * New upstream release
