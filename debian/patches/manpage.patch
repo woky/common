@@ -1,0 +1,13 @@
+Author: Reinhard Tartler
+Subject: Fix section in the generated manpage
+
+diff --git a/docs/containers.conf.5.md b/docs/containers.conf.5.md
+index 14ac6090..97eb6056 100644
+--- a/docs/containers.conf.5.md
++++ b/docs/containers.conf.5.md
+@@ -1,4 +1,4 @@
+-% containers.conf(5) Container engine configuration file
++% containers.conf 5 Container engine configuration file
+ 
+ # NAME
+ containers.conf - The container engine configuration file specifies default
