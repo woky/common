@@ -1,3 +1,11 @@
+golang-github-containers-common (0.44.0+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+  * Drop manpage.patch, merged upstream
+  * Tighten dependencies
+
+ -- Reinhard Tartler <siretart@tauware.de>  Wed, 06 Oct 2021 18:04:20 -0400
+
 golang-github-containers-common (0.42.1+ds1-2) unstable; urgency=medium
 
   * debian/control:
