@@ -1,4 +1,4 @@
-% containers.conf(5) Container engine configuration file
+% containers.conf 5 Container engine configuration file
 
 # NAME
 containers.conf - The container engine configuration file specifies default
@@ -279,9 +279,20 @@ Options are:
 The `network` table contains settings pertaining to the management of CNI
 plugins.
 
-**cni_plugin_dirs**=["/opt/cni/bin/",]
+**cni_plugin_dirs**=[]
 
 List of paths to directories where CNI plugin binaries are located.
+
+The default list is:
+```
+cni_plugin_dirs = [
+  "/usr/local/libexec/cni",
+  "/usr/libexec/cni",
+  "/usr/local/lib/cni",
+  "/usr/lib/cni",
+  "/opt/cni/bin",
+]
+```
 
 **default_network**="podman"
 
@@ -367,6 +378,29 @@ if you want to set environment variables for the container.
 Default method to use when logging events.
 Valid values: `file`, `journald`, and `none`.
 
+**helper_binaries_dir**=["/usr/libexec/podman", ...]
+
+A is a list of directories which are used to search for helper binaries.
+
+The default paths on Linux are:
+- `/usr/local/libexec/podman`
+- `/usr/local/lib/podman`
+- `/usr/libexec/podman`
+- `/usr/lib/podman`
+
+The default paths on macOS are:
+- `/usr/local/opt/podman/libexec`
+-	`/opt/homebrew/bin`
+-	`/opt/homebrew/opt/podman/libexec`
+- `/usr/local/bin`
+-	`/usr/local/libexec/podman`
+-	`/usr/local/lib/podman`
+-	`/usr/libexec/podman`
+-	`/usr/lib/podman`
+
+The default path on Windows is:
+- `C:\Program Files\RedHat\Podman`
+
 **hooks_dir**=["/etc/containers/oci/hooks.d", ...]
 
 Path to the OCI hooks directories for automatically executed hooks.
@@ -411,6 +445,11 @@ change the lock type.
 Indicates if Podman is running inside a VM via Podman Machine.
 Podman uses this value to do extra setup around networking from the
 container inside the VM to to host.
+
+**machine_image**="testing"
+
+Default image used when creating a new VM using `podman machine init`.
+Options: `testing`, `stable`, or a custom path or download URL to an image
 
 **multi_image_archive**=false
 

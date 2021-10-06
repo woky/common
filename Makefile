@@ -6,11 +6,15 @@ GO_BUILD=$(GO) build
 ifeq ($(shell go help mod >/dev/null 2>&1 && echo true), true)
 	GO_BUILD=GO111MODULE=on $(GO) build -mod=vendor
 endif
-BUILDTAGS := containers_image_openpgp,systemd
+BUILDTAGS := containers_image_openpgp,systemd,exclude_graphdriver_devicemapper
 DESTDIR ?=
 PREFIX := /usr/local
 CONFIGDIR := ${PREFIX}/share/containers
 PROJECT := github.com/containers/common
+
+# Enforce the GOPROXY to make sure dependencies are resovled consistently
+# across different environments.
+export GOPROXY := https://proxy.golang.org
 
 # If GOPATH not specified, use one in the local directory
 ifeq ($(GOPATH),)
@@ -35,8 +39,17 @@ define go-build
 	GOOS=$(1) GOARCH=$(2) $(GO) build -tags "$(3)" ./...
 endef
 
+define go-build-c
+	CGO_ENABLED=1 \
+	GOOS=$(1) GOARCH=$(2) $(GO) build -tags "$(3)" ./...
+endef
+
 .PHONY:
 build-cross:
+	$(call go-build-c,linux) # attempt to build without tags
+	$(call go-build-c,linux,,${BUILDTAGS})
+	$(call go-build-c,linux,386,${BUILDTAGS})
+	$(call go-build,linux) # attempt to build without tags
 	$(call go-build,linux,386,${BUILDTAGS})
 	$(call go-build,linux,arm,${BUILDTAGS})
 	$(call go-build,linux,arm64,${BUILDTAGS})
