@@ -54,6 +54,8 @@ type Config struct {
 	Containers ContainersConfig `toml:"containers"`
 	// Engine specifies how the container engine based on Engine will run
 	Engine EngineConfig `toml:"engine"`
+	// Machine specifies configurations of podman machine VMs
+	Machine MachineConfig `toml:"machine"`
 	// Network section defines the configuration of CNI Plugins
 	Network NetworkConfig `toml:"network"`
 	// Secret section defines configurations for the secret management
@@ -138,7 +140,7 @@ type ContainersConfig struct {
 	// will be truncated. It can be expressed as a human-friendly string
 	// that is parsed to bytes.
 	// Negative values indicate that the log file won't be truncated.
-	LogSizeMax int64 `toml:"log_size_max,omitempty"`
+	LogSizeMax int64 `toml:"log_size_max,omitempty,omitzero"`
 
 	// Specifies default format tag for container log messages.
 	// This is useful for creating a specific tag for container log messages.
@@ -153,7 +155,7 @@ type ContainersConfig struct {
 
 	// PidsLimit is the number of processes each container is restricted to
 	// by the cgroup process number controller.
-	PidsLimit int64 `toml:"pids_limit,omitempty"`
+	PidsLimit int64 `toml:"pids_limit,omitempty,omitzero"`
 
 	// PidNS indicates how to create a pid namespace for the container
 	PidNS string `toml:"pidns,omitempty"`
@@ -190,7 +192,7 @@ type ContainersConfig struct {
 	UserNS string `toml:"userns,omitempty"`
 
 	// UserNSSize how many UIDs to allocate for automatically created UserNS
-	UserNSSize int `toml:"userns_size,omitempty"`
+	UserNSSize int `toml:"userns_size,omitempty,omitzero"`
 }
 
 // EngineConfig contains configuration options used to set up a engine runtime
@@ -254,7 +256,7 @@ type EngineConfig struct {
 	// ImageParallelCopies indicates the maximum number of image layers
 	// to be copied simultaneously. If this is zero, container engines
 	// will fall back to containers/image defaults.
-	ImageParallelCopies uint `toml:"image_parallel_copies,omitempty"`
+	ImageParallelCopies uint `toml:"image_parallel_copies,omitempty,omitzero"`
 
 	// ImageDefaultFormat specified the manifest Type (oci, v2s2, or v2s1)
 	// to use when pulling, pushing, building container images. By default
@@ -277,9 +279,6 @@ type EngineConfig struct {
 
 	// MachineEnabled indicates if Podman is running in a podman-machine VM
 	MachineEnabled bool `toml:"machine_enabled,omitempty"`
-
-	// MachineImage is the image used when creating a podman-machine VM
-	MachineImage string `toml:"machine_image,omitempty"`
 
 	// MultiImageArchive - if true, the container engine allows for storing
 	// archives (e.g., of the docker-archive transport) with multiple
@@ -306,7 +305,7 @@ type EngineConfig struct {
 
 	// NumLocks is the number of locks to make available for containers and
 	// pods.
-	NumLocks uint32 `toml:"num_locks,omitempty"`
+	NumLocks uint32 `toml:"num_locks,omitempty,omitzero"`
 
 	// OCIRuntime is the OCI runtime to use.
 	OCIRuntime string `toml:"runtime,omitempty"`
@@ -382,7 +381,7 @@ type EngineConfig struct {
 
 	// StopTimeout is the number of seconds to wait for container to exit
 	// before sending kill signal.
-	StopTimeout uint `toml:"stop_timeout,omitempty"`
+	StopTimeout uint `toml:"stop_timeout,omitempty,omitzero"`
 
 	// TmpDir is the path to a temporary directory to store per-boot container
 	// files. Must be stored in a tmpfs.
@@ -401,7 +400,7 @@ type EngineConfig struct {
 
 	// ChownCopiedFiles tells the container engine whether to chown files copied
 	// into a container to the container's primary uid/gid.
-	ChownCopiedFiles bool `toml:"chown_copied_files"`
+	ChownCopiedFiles bool `toml:"chown_copied_files,omitempty"`
 }
 
 // SetOptions contains a subset of options in a Config. It's used to indicate if
@@ -475,6 +474,18 @@ type SecretConfig struct {
 	Driver string `toml:"driver,omitempty"`
 	// Opts contains driver specific options
 	Opts map[string]string `toml:"opts,omitempty"`
+}
+
+// MachineConfig represents the "machine" TOML config table
+type MachineConfig struct {
+	// Number of CPU's a machine is created with.
+	CPUs uint64 `toml:"cpus,omitempty,omitzero"`
+	// DiskSize is the size of the disk in GB created when init-ing a podman-machine VM
+	DiskSize uint64 `toml:"disk_size,omitempty,omitzero"`
+	// MachineImage is the image used when init-ing a podman-machine VM
+	Image string `toml:"image,omitempty"`
+	// Memory in MB a machine is created with.
+	Memory uint64 `toml:"memory,omitempty,omitzero"`
 }
 
 // Destination represents destination for remote service
@@ -1043,17 +1054,6 @@ func ReadCustomConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	// hack since Ommitempty does not seem to work with Write
-	c, err := Default()
-	if err != nil {
-		if os.IsNotExist(errors.Cause(err)) {
-			c, err = DefaultConfig()
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	newConfig := &Config{}
 	if _, err := os.Stat(path); err == nil {
 		if err := readConfigFromFile(path, newConfig); err != nil {
@@ -1064,11 +1064,6 @@ func ReadCustomConfig() (*Config, error) {
 			return nil, err
 		}
 	}
-	newConfig.Containers.LogSizeMax = c.Containers.LogSizeMax
-	newConfig.Containers.PidsLimit = c.Containers.PidsLimit
-	newConfig.Containers.UserNSSize = c.Containers.UserNSSize
-	newConfig.Engine.NumLocks = c.Engine.NumLocks
-	newConfig.Engine.StopTimeout = c.Engine.StopTimeout
 	return newConfig, nil
 }
 
