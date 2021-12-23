@@ -1,3 +1,13 @@
+golang-github-containers-common (0.44.4+ds1-1) unstable; urgency=medium
+
+  [ Arnaud Rebillout ]
+  * Sync debian/shortnames.conf with upstream
+
+  [ Reinhard Tartler ]
+  * Explicitly build-depend on golang-github-coreos-go-systemd-dev
+
+ -- Reinhard Tartler <siretart@tauware.de>  Wed, 22 Dec 2021 22:21:19 -0500
+
 golang-github-containers-common (0.44.3+ds1-2) unstable; urgency=medium
 
   * Upload to unstable
