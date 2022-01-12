@@ -28,6 +28,10 @@ var _ = Describe("Config", func() {
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(defaultConfig.Containers.ApparmorProfile).To(gomega.Equal(apparmor.Profile))
 			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
+			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(5))
+			path, err := defaultConfig.ImageCopyTmpDir()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(path).To(gomega.BeEquivalentTo("/var/tmp"))
 		})
 
 		It("should succeed with devices", func() {
@@ -107,6 +111,35 @@ var _ = Describe("Config", func() {
 		})
 	})
 
+	Describe("readStorageTmp", func() {
+		It("test image_copy_tmp_dir='storage'", func() {
+			// Reload from new configuration file
+			testFile := "testdata/temp.conf"
+			content := `[engine]
+image_copy_tmp_dir="storage"`
+			err := ioutil.WriteFile(testFile, []byte(content), os.ModePerm)
+			// Then
+			gomega.Expect(err).To(gomega.BeNil())
+			defer os.Remove(testFile)
+
+			config, _ := NewConfig(testFile)
+			path, err := config.ImageCopyTmpDir()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(path).To(gomega.ContainSubstring("containers/storage/tmp"))
+			// Given we do
+			oldTMPDIR, set := os.LookupEnv("TMPDIR")
+			os.Setenv("TMPDIR", "/var/tmp/foobar")
+			path, err = config.ImageCopyTmpDir()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(path).To(gomega.BeEquivalentTo("/var/tmp/foobar"))
+			if set {
+				os.Setenv("TMPDIR", oldTMPDIR)
+			} else {
+				os.Unsetenv("TMPDIR")
+			}
+		})
+	})
+
 	Describe("readConfigFromFile", func() {
 		It("should succeed with default config", func() {
 			// Given
@@ -151,6 +184,10 @@ var _ = Describe("Config", func() {
 					"/sbin/runsc",
 					"/run/current-system/sw/bin/runsc",
 				},
+				"krun": {
+					"/usr/bin/krun",
+					"/usr/local/bin/krun",
+				},
 			}
 
 			pluginDirs := []string{
@@ -161,6 +198,10 @@ var _ = Describe("Config", func() {
 			envs := []string{
 				"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 				"TERM=xterm",
+			}
+
+			networkCmdOptions := []string{
+				"enable_ipv6=true",
 			}
 
 			helperDirs := []string{
@@ -176,7 +217,9 @@ var _ = Describe("Config", func() {
 			gomega.Expect(defaultConfig.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(defaultConfig.Engine.OCIRuntimes).To(gomega.Equal(OCIRuntimeMap))
 			gomega.Expect(defaultConfig.Containers.HTTPProxy).To(gomega.Equal(false))
+			gomega.Expect(defaultConfig.Engine.NetworkCmdOptions).To(gomega.BeEquivalentTo(networkCmdOptions))
 			gomega.Expect(defaultConfig.Engine.HelperBinariesDir).To(gomega.Equal(helperDirs))
+			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(300))
 		})
 
 		It("test GetDefaultEnvEx", func() {
@@ -286,6 +329,7 @@ var _ = Describe("Config", func() {
 			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal(apparmor.Profile))
 			gomega.Expect(config.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(config.Containers.Env).To(gomega.BeEquivalentTo(envs))
+			gomega.Expect(config.Containers.UserNS).To(gomega.BeEquivalentTo(""))
 			gomega.Expect(config.Network.CNIPluginDirs).To(gomega.Equal(DefaultCNIPluginDirs))
 			gomega.Expect(config.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(config.Engine.OCIRuntimes["runc"]).To(gomega.Equal(OCIRuntimeMap["runc"]))
@@ -332,6 +376,9 @@ var _ = Describe("Config", func() {
 			gomega.Expect(config.Containers.LogSizeMax).To(gomega.Equal(int64(100000)))
 			gomega.Expect(config.Engine.ImageParallelCopies).To(gomega.Equal(uint(10)))
 			gomega.Expect(config.Engine.ImageDefaultFormat).To(gomega.Equal("v2s2"))
+			path, err := config.ImageCopyTmpDir()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(path).To(gomega.BeEquivalentTo("/tmp/foobar"))
 		})
 
 		It("should fail with invalid value", func() {
@@ -466,17 +513,6 @@ var _ = Describe("Config", func() {
 			}
 			err = cfg.Write()
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			// test that we do not write zero values to the file
-			path, err := customConfigFile()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			f, err := os.Open(path)
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			data, err := ioutil.ReadAll(f)
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			gomega.Expect(string(data)).ShouldNot(gomega.ContainSubstring("cpus"))
-			gomega.Expect(string(data)).ShouldNot(gomega.ContainSubstring("disk_size"))
-			gomega.Expect(string(data)).ShouldNot(gomega.ContainSubstring("memory"))
 
 			cfg, err = ReadCustomConfig()
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())

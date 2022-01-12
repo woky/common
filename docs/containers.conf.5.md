@@ -47,8 +47,7 @@ TOML can be simplified to:
     option = value
 
 ## CONTAINERS TABLE
-The containers table contains settings pertaining to the OCI runtime that can
-configure and manage the OCI runtime.
+The containers table contains settings to configure and manage the OCI runtime.
 
 **annotations** = []
 List of annotations. Specified as "key=value" pairs to be added to all containers.
@@ -462,11 +461,23 @@ and pods are visible.
 
 Path to the slirp4netns binary.
 
-**network_cmd_options**=[]
+**network_cmd_options**=["enable_ipv6=true",]
 
 Default options to pass to the slirp4netns binary.
 
-Example "allow_host_loopback=true"
+Valid options values are:
+
+  - **allow_host_loopback=true|false**: Allow the slirp4netns to reach the host loopback IP (`10.0.2.2`, which is added to `/etc/hosts` as `host.containers.internal` for your convenience). Default is false.
+  - **mtu=MTU**: Specify the MTU to use for this network. (Default is `65520`).
+  - **cidr=CIDR**: Specify ip range to use for this network. (Default is `10.0.2.0/24`).
+  - **enable_ipv6=true|false**: Enable IPv6. Default is false. (Required for `outbound_addr6`).
+  - **outbound_addr=INTERFACE**: Specify the outbound interface slirp should bind to (ipv4 traffic only).
+  - **outbound_addr=IPv4**: Specify the outbound ipv4 address slirp should bind to.
+  - **outbound_addr6=INTERFACE**: Specify the outbound interface slirp should bind to (ipv6 traffic only).
+  - **outbound_addr6=IPv6**: Specify the outbound ipv6 address slirp should bind to.
+  - **port_handler=rootlesskit**: Use rootlesskit for port forwarding. Default.
+  Note: Rootlesskit changes the source IP address of incoming packets to a IP address in the container network namespace, usually `10.0.2.100`. If your application requires the real source IP address, e.g. web server logs, use the slirp4netns port handler. The rootlesskit port handler is also used for rootless containers when connected to user-defined networks.
+  - **port_handler=slirp4netns**: Use the slirp4netns port forwarding, it is slower than rootlesskit but preserves the correct source IP address. This port handler cannot be used for user-defined networks.
 
 **no_pivot_root**=false
 
@@ -497,17 +508,30 @@ Default OCI specific runtime in runtimes that will be used by default. Must
 refer to a member of the runtimes table. Default runtime will be searched for
 on the system using the priority: "crun", "runc", "kata".
 
-**runtime_supports_json**=["crun", "runc", "kata", "runsc"]
+**runtime_supports_json**=["crun", "runc", "kata", "runsc", "krun"]
 
 The list of the OCI runtimes that support `--format=json`.
 
-**runtime_supports_kvm**=["kata"]
+**runtime_supports_kvm**=["kata", "krun"]
 
 The list of OCI runtimes that support running containers with KVM separation.
 
-**runtime_supports_nocgroups**=["crun"]
+**runtime_supports_nocgroups**=["crun", "krun"]
 
 The list of OCI runtimes that support running containers without CGroups.
+
+**image_copy_tmp_dir**="/var/tmp"
+
+Default location for storing temporary container image content.  Can be
+overridden with the TMPDIR environment variable.  If you specify "storage", then
+the location of the container/storage tmp directory will be used. If set then it
+is the users responsibility to cleanup storage. Configure tmpfiles.d(5) to
+cleanup storage.
+
+**service_timeout**=**5**
+
+Number of seconds to wait without a connection  before the
+`podman system service` times out and exits
 
 **static_dir**="/var/lib/containers/storage/libpod"
 
@@ -623,6 +647,6 @@ is used for the storage.conf file rather than the default.
 This is primarily used for testing.
 
 # SEE ALSO
-containers-storage.conf(5), containers-policy.json(5), containers-registries.conf(5)
+containers-storage.conf(5), containers-policy.json(5), containers-registries.conf(5), tmpfiles.d(5)
 
 [toml]: https://github.com/toml-lang/toml
