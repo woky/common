@@ -140,7 +140,7 @@ type ContainersConfig struct {
 	// will be truncated. It can be expressed as a human-friendly string
 	// that is parsed to bytes.
 	// Negative values indicate that the log file won't be truncated.
-	LogSizeMax int64 `toml:"log_size_max,omitempty,omitzero"`
+	LogSizeMax int64 `toml:"log_size_max,omitempty"`
 
 	// Specifies default format tag for container log messages.
 	// This is useful for creating a specific tag for container log messages.
@@ -155,7 +155,7 @@ type ContainersConfig struct {
 
 	// PidsLimit is the number of processes each container is restricted to
 	// by the cgroup process number controller.
-	PidsLimit int64 `toml:"pids_limit,omitempty,omitzero"`
+	PidsLimit int64 `toml:"pids_limit,omitempty"`
 
 	// PidNS indicates how to create a pid namespace for the container
 	PidNS string `toml:"pidns,omitempty"`
@@ -192,7 +192,7 @@ type ContainersConfig struct {
 	UserNS string `toml:"userns,omitempty"`
 
 	// UserNSSize how many UIDs to allocate for automatically created UserNS
-	UserNSSize int `toml:"userns_size,omitempty,omitzero"`
+	UserNSSize int `toml:"userns_size,omitempty"`
 }
 
 // EngineConfig contains configuration options used to set up a engine runtime
@@ -236,6 +236,9 @@ type EngineConfig struct {
 	// EventsLogger determines where events should be logged.
 	EventsLogger string `toml:"events_logger,omitempty"`
 
+	// graphRoot internal stores the location of the graphroot
+	graphRoot string
+
 	// HelperBinariesDir is a list of directories which are used to search for
 	// helper binaries.
 	HelperBinariesDir []string `toml:"helper_binaries_dir"`
@@ -256,7 +259,7 @@ type EngineConfig struct {
 	// ImageParallelCopies indicates the maximum number of image layers
 	// to be copied simultaneously. If this is zero, container engines
 	// will fall back to containers/image defaults.
-	ImageParallelCopies uint `toml:"image_parallel_copies,omitempty,omitzero"`
+	ImageParallelCopies uint `toml:"image_parallel_copies,omitempty"`
 
 	// ImageDefaultFormat specified the manifest Type (oci, v2s2, or v2s1)
 	// to use when pulling, pushing, building container images. By default
@@ -305,7 +308,7 @@ type EngineConfig struct {
 
 	// NumLocks is the number of locks to make available for containers and
 	// pods.
-	NumLocks uint32 `toml:"num_locks,omitempty,omitzero"`
+	NumLocks uint32 `toml:"num_locks,omitempty"`
 
 	// OCIRuntime is the OCI runtime to use.
 	OCIRuntime string `toml:"runtime,omitempty"`
@@ -331,7 +334,7 @@ type EngineConfig struct {
 	// ActiveService index to Destinations added v2.0.3
 	ActiveService string `toml:"active_service,omitempty"`
 
-	// Destinations mapped by service Names
+	// ServiceDestinations mapped by service Names
 	ServiceDestinations map[string]Destination `toml:"service_destinations,omitempty"`
 
 	// RuntimePath is the path to OCI runtime binary for launching containers.
@@ -375,13 +378,23 @@ type EngineConfig struct {
 	// containers/storage. As such this is not exposed via the config file.
 	StateType RuntimeStateStore `toml:"-"`
 
+	// ServiceTimeout is the number of seconds to wait without a connection
+	// before the `podman system service` times out and exits
+	ServiceTimeout uint `toml:"service_timeout,omitempty"`
+
 	// StaticDir is the path to a persistent directory to store container
 	// files.
 	StaticDir string `toml:"static_dir,omitempty"`
 
 	// StopTimeout is the number of seconds to wait for container to exit
 	// before sending kill signal.
-	StopTimeout uint `toml:"stop_timeout,omitempty,omitzero"`
+	StopTimeout uint `toml:"stop_timeout,omitempty"`
+
+	// ImageCopyTmpDir is the default location for storing temporary
+	// container image content,  Can be overridden with the TMPDIR
+	// environment variable.  If you specify "storage", then the
+	// location of the container/storage tmp directory will be used.
+	ImageCopyTmpDir string `toml:"image_copy_tmp_dir,omitempty"`
 
 	// TmpDir is the path to a temporary directory to store per-boot container
 	// files. Must be stored in a tmpfs.
@@ -400,7 +413,7 @@ type EngineConfig struct {
 
 	// ChownCopiedFiles tells the container engine whether to chown files copied
 	// into a container to the container's primary uid/gid.
-	ChownCopiedFiles bool `toml:"chown_copied_files,omitempty"`
+	ChownCopiedFiles bool `toml:"chown_copied_files"`
 }
 
 // SetOptions contains a subset of options in a Config. It's used to indicate if
@@ -479,13 +492,13 @@ type SecretConfig struct {
 // MachineConfig represents the "machine" TOML config table
 type MachineConfig struct {
 	// Number of CPU's a machine is created with.
-	CPUs uint64 `toml:"cpus,omitempty,omitzero"`
+	CPUs uint64 `toml:"cpus,omitempty"`
 	// DiskSize is the size of the disk in GB created when init-ing a podman-machine VM
-	DiskSize uint64 `toml:"disk_size,omitempty,omitzero"`
+	DiskSize uint64 `toml:"disk_size,omitempty"`
 	// MachineImage is the image used when init-ing a podman-machine VM
 	Image string `toml:"image,omitempty"`
 	// Memory in MB a machine is created with.
-	Memory uint64 `toml:"memory,omitempty,omitzero"`
+	Memory uint64 `toml:"memory,omitempty"`
 }
 
 // Destination represents destination for remote service
@@ -1054,6 +1067,17 @@ func ReadCustomConfig() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	// hack since Ommitempty does not seem to work with Write
+	c, err := Default()
+	if err != nil {
+		if os.IsNotExist(errors.Cause(err)) {
+			c, err = DefaultConfig()
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	newConfig := &Config{}
 	if _, err := os.Stat(path); err == nil {
 		if err := readConfigFromFile(path, newConfig); err != nil {
@@ -1064,6 +1088,11 @@ func ReadCustomConfig() (*Config, error) {
 			return nil, err
 		}
 	}
+	newConfig.Containers.LogSizeMax = c.Containers.LogSizeMax
+	newConfig.Containers.PidsLimit = c.Containers.PidsLimit
+	newConfig.Containers.UserNSSize = c.Containers.UserNSSize
+	newConfig.Engine.NumLocks = c.Engine.NumLocks
+	newConfig.Engine.StopTimeout = c.Engine.StopTimeout
 	return newConfig, nil
 }
 
@@ -1142,4 +1171,23 @@ func (c *Config) FindHelperBinary(name string, searchPATH bool) (string, error) 
 		return "", errors.Errorf("could not find %q because there are no helper binary directories configured", name)
 	}
 	return "", errors.Errorf("could not find %q in one of %v", name, c.Engine.HelperBinariesDir)
+}
+
+// ImageCopyTmpDir default directory to store tempory image files during copy
+func (c *Config) ImageCopyTmpDir() (string, error) {
+	if path, found := os.LookupEnv("TMPDIR"); found {
+		return path, nil
+	}
+	switch c.Engine.ImageCopyTmpDir {
+	case "":
+		return "", nil
+	case "storage":
+		return filepath.Join(c.Engine.graphRoot, "tmp"), nil
+	default:
+		if filepath.IsAbs(c.Engine.ImageCopyTmpDir) {
+			return c.Engine.ImageCopyTmpDir, nil
+		}
+	}
+
+	return "", errors.Errorf("invalid image_copy_tmp_dir value %q (relative paths are not accepted)", c.Engine.ImageCopyTmpDir)
 }
