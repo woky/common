@@ -14,8 +14,9 @@ import (
 func TestImageFunctions(t *testing.T) {
 	// Note: this will resolve pull from the GCR registry (see
 	// testdata/registries.conf).
-	busyboxLatest := "docker.io/library/busybox:latest"
-	busyboxDigest := "docker.io/library/busybox@"
+	busybox := "docker.io/library/busybox"
+	busyboxLatest := busybox + ":latest"
+	busyboxDigest := busybox + "@"
 
 	runtime, cleanup := testNewRuntime(t)
 	defer cleanup()
@@ -62,6 +63,14 @@ func TestImageFunctions(t *testing.T) {
 	require.Len(t, digests, 2)
 	require.Equal(t, origDigest.String(), digests[0].String(), "first recoreded digest should be the one of the image")
 
+	// containers/podman/issues/12729: make sure manifest lookup returns
+	// the correct error for both digests.
+	for _, digest := range digests {
+		_, err := runtime.LookupManifestList(busybox + "@" + digest.String())
+		require.Error(t, err, "Manifest lookup should fail on an ordinary image")
+		require.Equal(t, ErrNotAManifestList, errors.Cause(err))
+	}
+
 	// Below mostly smoke tests.
 	require.False(t, image.IsReadOnly())
 	isDangling, err := image.IsDangling(ctx)
@@ -94,10 +103,13 @@ func TestImageFunctions(t *testing.T) {
 	require.Nil(t, containers)
 
 	// Since we have no containers here, we can only smoke test.
-	require.NoError(t, image.removeContainers(nil))
-	require.Error(t, image.removeContainers(func(_ string) error {
-		return errors.New("TEST")
-	}))
+	rmOptions := &RemoveImagesOptions{
+		RemoveContainerFunc: func(_ string) error {
+			return errors.New("TEST")
+		},
+		Force: true,
+	}
+	require.Error(t, image.removeContainers(rmOptions))
 
 	// Two items since both names are "Named".
 	namedRepoTags, err := image.NamedRepoTags()
@@ -154,7 +166,7 @@ func TestImageFunctions(t *testing.T) {
 	require.True(t, size > 0)
 
 	// Now compare the inspect data to what we expect.
-	imageData, err := image.Inspect(ctx, true)
+	imageData, err := image.Inspect(ctx, &InspectOptions{WithParent: true, WithSize: true})
 	require.NoError(t, err)
 	require.Equal(t, image.ID(), imageData.ID, "inspect data should match")
 	require.Equal(t, repoTags, imageData.RepoTags, "inspect data should match")
@@ -163,6 +175,26 @@ func TestImageFunctions(t *testing.T) {
 	require.Equal(t, image.Digest().String(), imageData.Digest.String(), "inspect data should match")
 	require.Equal(t, labels, imageData.Labels, "inspect data should match")
 	require.Equal(t, image.NamesHistory(), imageData.NamesHistory, "inspect data should match")
+}
+
+func TestInspectHealthcheck(t *testing.T) {
+	runtime, cleanup := testNewRuntime(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	imageName := "quay.io/libpod/healthcheck:config-only"
+	pullOptions := &PullOptions{}
+	pullOptions.Writer = os.Stdout
+	pulledImages, err := runtime.Pull(ctx, imageName, config.PullPolicyAlways, pullOptions)
+	require.NoError(t, err)
+	require.Len(t, pulledImages, 1)
+	image := pulledImages[0]
+
+	// Now compare the inspect data to what we expect.
+	imageData, err := image.Inspect(ctx, nil)
+	require.NoError(t, err)
+	require.NotNil(t, imageData.HealthCheck, "health check should be found in config")
+	require.Equal(t, []string{"CMD-SHELL", "curl -f http://localhost/ || exit 1"}, imageData.HealthCheck.Test, "health check should be found in config")
 }
 
 func TestTag(t *testing.T) {

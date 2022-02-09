@@ -29,6 +29,8 @@ var _ = Describe("Config", func() {
 			gomega.Expect(defaultConfig.Containers.ApparmorProfile).To(gomega.Equal(apparmor.Profile))
 			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(5))
+			gomega.Expect(defaultConfig.NetNS()).To(gomega.BeEquivalentTo("private"))
+			gomega.Expect(defaultConfig.Engine.InfraImage).To(gomega.BeEquivalentTo(""))
 			path, err := defaultConfig.ImageCopyTmpDir()
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(path).To(gomega.BeEquivalentTo("/var/tmp"))
@@ -220,6 +222,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(defaultConfig.Engine.NetworkCmdOptions).To(gomega.BeEquivalentTo(networkCmdOptions))
 			gomega.Expect(defaultConfig.Engine.HelperBinariesDir).To(gomega.Equal(helperDirs))
 			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(300))
+			gomega.Expect(defaultConfig.Engine.InfraImage).To(gomega.BeEquivalentTo("k8s.gcr.io/pause:3.4.1"))
 		})
 
 		It("test GetDefaultEnvEx", func() {
@@ -335,13 +338,17 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(config.Engine.OCIRuntimes["runc"]).To(gomega.Equal(OCIRuntimeMap["runc"]))
 			if useSystemd() {
 				gomega.Expect(config.Engine.CgroupManager).To(gomega.BeEquivalentTo("systemd"))
-				gomega.Expect(config.Engine.EventsLogger).To(gomega.BeEquivalentTo("journald"))
-				gomega.Expect(config.Containers.LogDriver).To(gomega.BeEquivalentTo("k8s-file"))
 			} else {
 				gomega.Expect(config.Engine.CgroupManager).To(gomega.BeEquivalentTo("cgroupfs"))
+			}
+			if useJournald() {
+				gomega.Expect(config.Engine.EventsLogger).To(gomega.BeEquivalentTo("journald"))
+				gomega.Expect(config.Containers.LogDriver).To(gomega.BeEquivalentTo("journald"))
+			} else {
 				gomega.Expect(config.Engine.EventsLogger).To(gomega.BeEquivalentTo("file"))
 				gomega.Expect(config.Containers.LogDriver).To(gomega.BeEquivalentTo("k8s-file"))
 			}
+			gomega.Expect(config.Engine.EventsLogFilePath).To(gomega.BeEquivalentTo(config.Engine.TmpDir + "/events/events.log"))
 
 		})
 
@@ -376,6 +383,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(config.Containers.LogSizeMax).To(gomega.Equal(int64(100000)))
 			gomega.Expect(config.Engine.ImageParallelCopies).To(gomega.Equal(uint(10)))
 			gomega.Expect(config.Engine.ImageDefaultFormat).To(gomega.Equal("v2s2"))
+			gomega.Expect(config.Engine.EventsLogFilePath).To(gomega.BeEquivalentTo("/tmp/events.log"))
 			path, err := config.ImageCopyTmpDir()
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(path).To(gomega.BeEquivalentTo("/tmp/foobar"))
@@ -513,6 +521,17 @@ image_copy_tmp_dir="storage"`
 			}
 			err = cfg.Write()
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+			// test that we do not write zero values to the file
+			path, err := customConfigFile()
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			f, err := os.Open(path)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			data, err := ioutil.ReadAll(f)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			gomega.Expect(string(data)).ShouldNot(gomega.ContainSubstring("cpus"))
+			gomega.Expect(string(data)).ShouldNot(gomega.ContainSubstring("disk_size"))
+			gomega.Expect(string(data)).ShouldNot(gomega.ContainSubstring("memory"))
 
 			cfg, err = ReadCustomConfig()
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
@@ -691,6 +710,7 @@ image_copy_tmp_dir="storage"`
 			conf := Config{}
 			content := bytes.NewBufferString("")
 			logrus.SetOutput(content)
+			logrus.SetLevel(logrus.DebugLevel)
 			err := readConfigFromFile("testdata/containers_broken.conf", &conf)
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(conf.Containers.NetNS).To(gomega.Equal("bridge"))

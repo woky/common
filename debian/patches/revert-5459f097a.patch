@@ -1,0 +1,22 @@
+From: Reinhard Tartler <siretart@tauware.de>
+Description: Revert upstream commit 5459f097a
+
+This is to avoid an unlreased copy opencontainers/image-spec
+
+diff --git a/libimage/manifests/manifests.go b/libimage/manifests/manifests.go
+index 8d1abfba..45223cc2 100644
+--- b/libimage/manifests/manifests.go
++++ a/libimage/manifests/manifests.go
+@@ -353,12 +353,9 @@
+ 			}
+ 			if instanceInfo.OS == "" {
+ 				instanceInfo.OS = config.OS
+-				instanceInfo.OSVersion = config.OSVersion
+-				instanceInfo.OSFeatures = config.OSFeatures
+ 			}
+ 			if instanceInfo.Architecture == "" {
+ 				instanceInfo.Architecture = config.Architecture
+-				instanceInfo.Variant = config.Variant
+ 			}
+ 		}
+ 		manifestBytes, manifestType, err := src.GetManifest(ctx, instanceInfo.instanceDigest)

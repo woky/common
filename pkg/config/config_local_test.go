@@ -203,12 +203,15 @@ var _ = Describe("Config Local", func() {
 
 	It("should return containers engine env", func() {
 		// Given
-		expectedEnv := []string{"http_proxy=internal.proxy.company.com", "foo=bar"}
+		expectedEnv := []string{"super=duper", "foo=bar"}
 		// When
 		config, err := NewConfig("testdata/containers_default.conf")
 		// Then
 		gomega.Expect(err).To(gomega.BeNil())
 		gomega.Expect(config.Engine.Env).To(gomega.BeEquivalentTo(expectedEnv))
+		gomega.Expect(os.Getenv("super")).To(gomega.BeEquivalentTo("duper"))
+		gomega.Expect(os.Getenv("foo")).To(gomega.BeEquivalentTo("bar"))
+
 	})
 
 	It("Expect Remote to be False", func() {
@@ -322,23 +325,11 @@ var _ = Describe("Config Local", func() {
 		gomega.Expect(config2.Engine.MachineEnabled).To(gomega.Equal(true))
 	})
 
-	It("Rootless networking", func() {
-		// Given
-		config, err := NewConfig("")
-		gomega.Expect(err).To(gomega.BeNil())
-		gomega.Expect(config.Containers.RootlessNetworking).To(gomega.Equal("slirp4netns"))
-		// When
-		config2, err := NewConfig("testdata/containers_default.conf")
-		// Then
-		gomega.Expect(err).To(gomega.BeNil())
-		gomega.Expect(config2.Containers.RootlessNetworking).To(gomega.Equal("cni"))
-	})
-
 	It("default netns", func() {
 		// Given
 		config, err := NewConfig("")
 		gomega.Expect(err).To(gomega.BeNil())
-		gomega.Expect(config.Containers.NetNS).To(gomega.Equal(""))
+		gomega.Expect(config.Containers.NetNS).To(gomega.Equal("private"))
 		// When
 		config2, err := NewConfig("testdata/containers_default.conf")
 		// Then
@@ -382,11 +373,23 @@ var _ = Describe("Config Local", func() {
 		gomega.Expect(config2.Machine.Image).To(gomega.Equal("stable"))
 	})
 
+	It("CompatAPIEnforceDockerHub", func() {
+		// Given
+		config, err := NewConfig("")
+		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(config.Engine.CompatAPIEnforceDockerHub).To(gomega.Equal(true))
+		// When
+		config2, err := NewConfig("testdata/containers_default.conf")
+		// Then
+		gomega.Expect(err).To(gomega.BeNil())
+		gomega.Expect(config2.Engine.CompatAPIEnforceDockerHub).To(gomega.Equal(false))
+	})
+
 	It("Set machine disk", func() {
 		// Given
 		config, err := NewConfig("")
 		gomega.Expect(err).To(gomega.BeNil())
-		gomega.Expect(config.Machine.DiskSize).To(gomega.Equal(uint64(10)))
+		gomega.Expect(config.Machine.DiskSize).To(gomega.Equal(uint64(100)))
 		// When
 		config2, err := NewConfig("testdata/containers_default.conf")
 		// Then
