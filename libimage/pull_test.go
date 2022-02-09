@@ -51,6 +51,9 @@ func TestPull(t *testing.T) {
 		{"docker://docker.io/library/alpine", false, 1, []string{"docker.io/library/alpine:latest"}},
 		{"quay.io/libpod/alpine@sha256:634a8f35b5f16dcf4aaa0822adc0b1964bb786fca12f6831de8ddc45e5986a00", false, 1, []string{"quay.io/libpod/alpine@sha256:634a8f35b5f16dcf4aaa0822adc0b1964bb786fca12f6831de8ddc45e5986a00"}},
 		{"quay.io/libpod/alpine:pleaseignorethistag@sha256:634a8f35b5f16dcf4aaa0822adc0b1964bb786fca12f6831de8ddc45e5986a00", false, 1, []string{"quay.io/libpod/alpine@sha256:634a8f35b5f16dcf4aaa0822adc0b1964bb786fca12f6831de8ddc45e5986a00"}},
+
+		// DIR
+		{"dir:testdata/scratch-dir-5pec!@L", false, 1, []string{"61e17f84d763cc086d43c67dcf4cdbd69f9224c74e961c53b589b70499eac443"}},
 	} {
 		pulledImages, err := runtime.Pull(ctx, test.input, config.PullPolicyAlways, pullOptions)
 		if test.expectError {
@@ -85,35 +88,102 @@ func TestPullPlatforms(t *testing.T) {
 	localArch := goruntime.GOARCH
 	localOS := goruntime.GOOS
 
-	pulledImages, err := runtime.Pull(ctx, "busybox", config.PullPolicyAlways, pullOptions)
+	withTag := "busybox:musl"
+
+	pulledImages, err := runtime.Pull(ctx, withTag, config.PullPolicyAlways, pullOptions)
 	require.NoError(t, err, "pull busybox")
 	require.Len(t, pulledImages, 1)
 
-	image, _, err := runtime.LookupImage("busybox", nil)
+	// Repulling with a bogus architecture should yield an error and not
+	// choose the local image.
+	pullOptions.Architecture = "bogus"
+	_, err = runtime.Pull(ctx, withTag, config.PullPolicyNewer, pullOptions)
+	require.Error(t, err, "pulling with a bogus architecture must fail even if there is a local image of another architecture")
+	require.Contains(t, err.Error(), "no image found in manifest list for architecture bogus")
+
+	image, _, err := runtime.LookupImage(withTag, nil)
 	require.NoError(t, err, "lookup busybox")
 	require.NotNil(t, image, "lookup busybox")
 
-	image, _, err = runtime.LookupImage("busybox", &LookupImageOptions{Architecture: localArch})
+	_, _, err = runtime.LookupImage("busybox", nil)
+	require.Error(t, err, "untagged image resolves to non-existent :latest")
+
+	image, _, err = runtime.LookupImage(withTag, &LookupImageOptions{Architecture: localArch})
 	require.NoError(t, err, "lookup busybox - by local arch")
 	require.NotNil(t, image, "lookup busybox - by local arch")
 
-	image, _, err = runtime.LookupImage("busybox", &LookupImageOptions{OS: localOS})
+	image, _, err = runtime.LookupImage(withTag, &LookupImageOptions{OS: localOS})
 	require.NoError(t, err, "lookup busybox - by local arch")
 	require.NotNil(t, image, "lookup busybox - by local arch")
 
-	_, _, err = runtime.LookupImage("busybox", &LookupImageOptions{Architecture: "bogus"})
+	_, _, err = runtime.LookupImage(withTag, &LookupImageOptions{Architecture: "bogus"})
 	require.Error(t, err, "lookup busybox - bogus arch")
 
-	_, _, err = runtime.LookupImage("busybox", &LookupImageOptions{OS: "bogus"})
+	_, _, err = runtime.LookupImage(withTag, &LookupImageOptions{OS: "bogus"})
 	require.Error(t, err, "lookup busybox - bogus OS")
 
 	pullOptions.Architecture = "arm"
-	pulledImages, err = runtime.Pull(ctx, "busybox", config.PullPolicyAlways, pullOptions)
+	pulledImages, err = runtime.Pull(ctx, withTag, config.PullPolicyAlways, pullOptions)
 	require.NoError(t, err, "pull busybox - arm")
 	require.Len(t, pulledImages, 1)
 	pullOptions.Architecture = ""
 
-	image, _, err = runtime.LookupImage("busybox", &LookupImageOptions{Architecture: "arm"})
+	image, _, err = runtime.LookupImage(withTag, &LookupImageOptions{Architecture: "arm"})
 	require.NoError(t, err, "lookup busybox - by arm")
-	require.NotNil(t, image, "lookup busybox - by local arch")
+	require.NotNil(t, image, "lookup busybox - by arm")
+
+	pullOptions.Architecture = "aarch64"
+	pulledImages, err = runtime.Pull(ctx, withTag, config.PullPolicyAlways, pullOptions)
+	require.NoError(t, err, "pull busybox - aarch64")
+	require.Len(t, pulledImages, 1)
+}
+
+func TestPullPlatformsWithEmptyRegistriesConf(t *testing.T) {
+	runtime, cleanup := testNewRuntime(t, testNewRuntimeOptions{registriesConfPath: "/dev/null"})
+	defer cleanup()
+	ctx := context.Background()
+	pullOptions := &PullOptions{}
+	pullOptions.Writer = os.Stdout
+
+	localArch := goruntime.GOARCH
+	localOS := goruntime.GOOS
+
+	imageName := "quay.io/libpod/busybox"
+	newTag := "crazy:train"
+
+	pulledImages, err := runtime.Pull(ctx, imageName, config.PullPolicyAlways, pullOptions)
+	require.NoError(t, err, "pull "+imageName)
+	require.Len(t, pulledImages, 1)
+
+	err = pulledImages[0].Tag(newTag)
+	require.NoError(t, err, "tag")
+
+	// See containers/podman/issues/12707: a custom platform will enforce
+	// pulling via newer. Older versions enforced always which can lead to
+	// errors.
+	pullOptions.OS = localOS
+	pullOptions.Architecture = localArch
+	pulledImages, err = runtime.Pull(ctx, newTag, config.PullPolicyMissing, pullOptions)
+	require.NoError(t, err, "pull "+newTag)
+	require.Len(t, pulledImages, 1)
+}
+
+func TestPullPolicy(t *testing.T) {
+	runtime, cleanup := testNewRuntime(t)
+	defer cleanup()
+	ctx := context.Background()
+	pullOptions := &PullOptions{}
+
+	pulledImages, err := runtime.Pull(ctx, "alpine", config.PullPolicyNever, pullOptions)
+	require.Error(t, err, "Never pull different arch alpine")
+	require.Nil(t, pulledImages, "lookup alpine")
+
+	pulledImages, err = runtime.Pull(ctx, "alpine", config.PullPolicyNewer, pullOptions)
+	require.NoError(t, err, "Newer pull different arch alpine")
+	require.NotNil(t, pulledImages, "lookup alpine")
+
+	pulledImages, err = runtime.Pull(ctx, "alpine", config.PullPolicyNever, pullOptions)
+	require.NoError(t, err, "Never pull different arch alpine")
+	require.NotNil(t, pulledImages, "lookup alpine")
+
 }

@@ -2,7 +2,6 @@ package libimage
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"os"
 	"strings"
@@ -219,15 +218,7 @@ func (r *Runtime) newCopier(options *CopyOptions) (*copier, error) {
 
 	c.systemContext.DockerArchiveAdditionalTags = options.dockerArchiveAdditionalTags
 
-	if options.Architecture != "" {
-		c.systemContext.ArchitectureChoice = options.Architecture
-	}
-	if options.OS != "" {
-		c.systemContext.OSChoice = options.OS
-	}
-	if options.Variant != "" {
-		c.systemContext.VariantChoice = options.Variant
-	}
+	c.systemContext.OSChoice, c.systemContext.ArchitectureChoice, c.systemContext.VariantChoice = NormalizePlatform(options.OS, options.Architecture, options.Variant)
 
 	if options.SignaturePolicyPath != "" {
 		c.systemContext.SignaturePolicyPath = options.SignaturePolicyPath
@@ -304,7 +295,7 @@ func (r *Runtime) newCopier(options *CopyOptions) (*copier, error) {
 
 	defaultContainerConfig, err := config.Default()
 	if err != nil {
-		logrus.Warnf("failed to get container config for copy options: %v", err)
+		logrus.Warnf("Failed to get container config for copy options: %v", err)
 	} else {
 		c.imageCopyOptions.MaxParallelDownloads = defaultContainerConfig.Engine.ImageParallelCopies
 	}

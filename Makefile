@@ -36,6 +36,7 @@ define go-get
 endef
 
 define go-build
+	CGO_ENABLED=0 \
 	GOOS=$(1) GOARCH=$(2) $(GO) build -tags "$(3)" ./...
 endef
 
@@ -48,16 +49,16 @@ endef
 build-cross:
 	$(call go-build-c,linux) # attempt to build without tags
 	$(call go-build-c,linux,,${BUILDTAGS})
-	$(call go-build-c,linux,386,${BUILDTAGS})
-	$(call go-build,linux) # attempt to build without tags
+	$(call go-build,linux,386,${BUILDTAGS})
+	$(call go-build-c,linux) # attempt to build without tags
 	$(call go-build,linux,386,${BUILDTAGS})
 	$(call go-build,linux,arm,${BUILDTAGS})
 	$(call go-build,linux,arm64,${BUILDTAGS})
 	$(call go-build,linux,ppc64le,${BUILDTAGS})
 	$(call go-build,linux,s390x,${BUILDTAGS})
 	$(call go-build,darwin,amd64,${BUILDTAGS})
-	$(call go-build,windows,amd64,remote ${BUILDTAGS})
-	$(call go-build,windows,386,remote ${BUILDTAGS})
+	$(call go-build,windows,amd64,${BUILDTAGS})
+	$(call go-build,windows,386,${BUILDTAGS})
 
 .PHONY: all
 all: build-amd64 build-386
@@ -122,12 +123,13 @@ test: test-unit
 .PHONY: test-unit
 test-unit:
 	go test --tags $(BUILDTAGS) -v ./libimage
+	go test --tags $(BUILDTAGS) -v ./libnetwork/...
 	go test --tags $(BUILDTAGS) -v $(PROJECT)/pkg/...
 	go test --tags remote,seccomp,$(BUILDTAGS) -v $(PROJECT)/pkg/...
 
 .PHONY: codespell
 codespell:
-	codespell -S bin,vendor,.git,go.sum,changelog.txt,.cirrus.yml,"RELEASE_NOTES.md,*.xz,*.gz,*.tar,*.tgz,bin2img,*ico,*.png,*.1,*.5,copyimg,*.orig,apidoc.go" -L uint,iff,od,seeked,splitted,marge,ERROR,hist,ether -w
+	codespell -S bin,vendor,.git,go.sum,changelog.txt,.cirrus.yml,"RELEASE_NOTES.md,*.xz,*.gz,*.tar,*.tgz,bin2img,*ico,*.png,*.1,*.5,copyimg,*.orig,apidoc.go" -L creat,uint,iff,od,seeked,splitted,marge,ERROR,hist,ether -w
 
 clean: ## Clean artifacts
 	$(MAKE) -C docs clean
