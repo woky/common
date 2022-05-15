@@ -1,3 +1,4 @@
+//go:build remote
 // +build remote
 
 package config
@@ -6,7 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
@@ -138,5 +139,4 @@ var _ = Describe("Config Remote", func() {
 		// Then
 		gomega.Expect(err).To(gomega.BeNil())
 	})
-
 })

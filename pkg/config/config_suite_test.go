@@ -3,7 +3,7 @@ package config
 import (
 	"testing"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
@@ -16,9 +16,7 @@ const (
 	invalidPath = "/wrong"
 )
 
-var (
-	sut *Config
-)
+var sut *Config
 
 func beforeEach() {
 	sut = defaultConfig()

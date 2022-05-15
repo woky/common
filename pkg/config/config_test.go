@@ -9,7 +9,7 @@ import (
 
 	"github.com/containers/common/pkg/apparmor"
 	"github.com/containers/common/pkg/capabilities"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	selinux "github.com/opencontainers/selinux/go-selinux"
 	"github.com/sirupsen/logrus"
@@ -27,9 +27,11 @@ var _ = Describe("Config", func() {
 			// Then
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(defaultConfig.Containers.ApparmorProfile).To(gomega.Equal(apparmor.Profile))
+			gomega.Expect(defaultConfig.Containers.BaseHostsFile).To(gomega.Equal(""))
 			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(5))
 			gomega.Expect(defaultConfig.NetNS()).To(gomega.BeEquivalentTo("private"))
+			gomega.Expect(defaultConfig.IPCNS()).To(gomega.BeEquivalentTo("shareable"))
 			gomega.Expect(defaultConfig.Engine.InfraImage).To(gomega.BeEquivalentTo(""))
 			path, err := defaultConfig.ImageCopyTmpDir()
 			gomega.Expect(err).To(gomega.BeNil())
@@ -38,7 +40,8 @@ var _ = Describe("Config", func() {
 
 		It("should succeed with devices", func() {
 			// Given
-			sut.Containers.Devices = []string{"/dev/null:/dev/null:rw",
+			sut.Containers.Devices = []string{
+				"/dev/null:/dev/null:rw",
 				"/dev/sdc/",
 				"/dev/sdc:/dev/xvdc",
 				"/dev/sdc:rm",
@@ -97,9 +100,7 @@ var _ = Describe("Config", func() {
 			defaultConfig, _ := NewConfig("")
 			// EnableLabeling should match whether or not SELinux is enabled on the host
 			gomega.Expect(defaultConfig.Containers.EnableLabeling).To(gomega.Equal(selinux.GetEnabled()))
-
 		})
-
 	})
 
 	Describe("ValidateNetworkConfig", func() {
@@ -154,7 +155,6 @@ image_copy_tmp_dir="storage"`
 
 			OCIRuntimeMap := map[string][]string{
 				"kata": {
-
 					"/usr/bin/kata-runtime",
 					"/usr/sbin/kata-runtime",
 					"/usr/local/bin/kata-runtime",
@@ -202,8 +202,12 @@ image_copy_tmp_dir="storage"`
 				"TERM=xterm",
 			}
 
-			networkCmdOptions := []string{
-				"enable_ipv6=true",
+			volumes := []string{
+				"$HOME:$HOME",
+			}
+
+			newVolumes := []string{
+				os.ExpandEnv("$HOME:$HOME"),
 			}
 
 			helperDirs := []string{
@@ -219,14 +223,22 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(defaultConfig.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(defaultConfig.Engine.OCIRuntimes).To(gomega.Equal(OCIRuntimeMap))
 			gomega.Expect(defaultConfig.Containers.HTTPProxy).To(gomega.Equal(false))
-			gomega.Expect(defaultConfig.Engine.NetworkCmdOptions).To(gomega.BeEquivalentTo(networkCmdOptions))
+			gomega.Expect(defaultConfig.Engine.NetworkCmdOptions).To(gomega.BeNil())
 			gomega.Expect(defaultConfig.Engine.HelperBinariesDir).To(gomega.Equal(helperDirs))
 			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(300))
 			gomega.Expect(defaultConfig.Engine.InfraImage).To(gomega.BeEquivalentTo("k8s.gcr.io/pause:3.4.1"))
+			gomega.Expect(defaultConfig.Machine.Volumes).To(gomega.BeEquivalentTo(volumes))
+			newV, err := defaultConfig.MachineVolumes()
+			if newVolumes[0] == ":" {
+				// $HOME is not set
+				gomega.Expect(err).To(gomega.HaveOccurred())
+			} else {
+				gomega.Expect(err).To(gomega.BeNil())
+				gomega.Expect(newV).To(gomega.BeEquivalentTo(newVolumes))
+			}
 		})
 
 		It("test GetDefaultEnvEx", func() {
-
 			envs := []string{
 				"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 				"TERM=xterm",
@@ -349,7 +361,8 @@ image_copy_tmp_dir="storage"`
 				gomega.Expect(config.Containers.LogDriver).To(gomega.BeEquivalentTo("k8s-file"))
 			}
 			gomega.Expect(config.Engine.EventsLogFilePath).To(gomega.BeEquivalentTo(config.Engine.TmpDir + "/events/events.log"))
-
+			gomega.Expect(uint64(config.Engine.EventsLogFileMaxSize)).To(gomega.Equal(DefaultEventsLogSizeMax))
+			gomega.Expect(config.Engine.PodExitPolicy).To(gomega.Equal(PodExitPolicyContinue))
 		})
 
 		It("should success with valid user file path", func() {
@@ -360,6 +373,8 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal("container-default"))
 			gomega.Expect(config.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
+			gomega.Expect(config.Containers.BaseHostsFile).To(gomega.BeEquivalentTo("/etc/hosts2"))
+			gomega.Expect(config.Containers.HostContainersInternalIP).To(gomega.BeEquivalentTo("1.2.3.4"))
 		})
 
 		It("contents of passed-in file should override others", func() {
@@ -387,6 +402,8 @@ image_copy_tmp_dir="storage"`
 			path, err := config.ImageCopyTmpDir()
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(path).To(gomega.BeEquivalentTo("/tmp/foobar"))
+			gomega.Expect(uint64(config.Engine.EventsLogFileMaxSize)).To(gomega.Equal(uint64(500)))
+			gomega.Expect(config.Engine.PodExitPolicy).To(gomega.BeEquivalentTo(PodExitPolicyStop))
 		})
 
 		It("should fail with invalid value", func() {
@@ -670,9 +687,9 @@ image_copy_tmp_dir="storage"`
 				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 				conf := file.Name() + ".conf"
 
-				os.Rename(file.Name(), conf)
+				err = os.Rename(file.Name(), conf)
+				gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 				return conf
-
 			}
 			configs := []string{
 				"test1",
@@ -771,5 +788,25 @@ env=["foo=bar"]`
 			_, err = Reload()
 			gomega.Expect(err).To(gomega.BeNil())
 		})
+	})
+
+	It("write default config should be empty", func() {
+		defer os.Unsetenv("CONTAINERS_CONF")
+		os.Setenv("CONTAINERS_CONF", "/dev/null")
+		conf, err := ReadCustomConfig()
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+
+		f, err := ioutil.TempFile("", "container-common-test")
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		defer f.Close()
+		defer os.Remove(f.Name())
+		os.Setenv("CONTAINERS_CONF", f.Name())
+		err = conf.Write()
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		b, err := ioutil.ReadFile(f.Name())
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		// config should only contain empty stanzas
+		gomega.Expect(string(b)).To(gomega.
+			Equal("[containers]\n\n[engine]\n\n[machine]\n\n[network]\n\n[secrets]\n\n[configmaps]\n"))
 	})
 })

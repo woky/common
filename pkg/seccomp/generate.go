@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Copyright 2013-2021 Docker, Inc.
@@ -28,7 +29,7 @@ func main() {
 		panic(err)
 	}
 
-	if err := ioutil.WriteFile(f, b, 0644); err != nil {
+	if err := ioutil.WriteFile(f, b, 0o644); err != nil {
 		panic(err)
 	}
 }

@@ -59,6 +59,13 @@ Example: "run.oci.keep_original_groups=1"
 Used to change the name of the default AppArmor profile of container engines.
 The default profile name is "container-default".
 
+**base_hosts_file**=""
+
+The hosts entries from the base hosts file are added to the containers hosts
+file. This must be either an absolute path or as special values "image" which
+uses the hosts file from the container image or "none" which means
+no base hosts file is used. The default is "" which will use /etc/hosts.
+
 **cgroups**="enabled"
 
 Determines  whether  the  container will create CGroups.
@@ -143,6 +150,16 @@ environment variables to the container.
 
 Pass all host environment variables into the container.
 
+**host_containers_internal_ip**=""
+
+Set the ip for the host.containers.internal entry in the containers /etc/hosts
+file. This can be set to "none" to disable adding this entry. By default it
+will automatically choose the host ip.
+
+NOTE: When using podman machine this entry will never be added to the containers
+hosts file instead the gvproxy dns resolver will resolve this hostname. Therefore
+it is not possible to disable the entry in this case.
+
 **http_proxy**=true
 
 Default proxy environment variables will be passed into the container.
@@ -162,12 +179,14 @@ Path to the container-init binary, which forwards signals and reaps processes
 within containers. Note that the container-init binary will only be used when
 the `--init` for podman-create and podman-run is set.
 
-**ipcns**="private"
+**ipcns**="shareable"
 
 Default way to to create a IPC namespace for the container.
 Options are:
-  `private` Create private IPC Namespace for the container.
-  `host`    Share host IPC Namespace with the container.
+  `host`     Share host IPC Namespace with the container.
+  `none`     Create shareable IPC Namespace for the container without a private /dev/shm.
+  `private`  Create private IPC Namespace for the container, other containers are not allowed to share it.
+  `shareable` Create shareable IPC Namespace for the container.
 
 **keyring**=true
 
@@ -268,6 +287,12 @@ Options are:
   `private` Create private UTS Namespace for the container.
   `host`    Share host UTS Namespace with the container.
 
+**volumes**=[]
+
+List of volumes.
+Specified as "directory-on-host:directory-in-container:options".
+
+Example:  "/db:/var/lib/db:ro".
 
 ## NETWORK TABLE
 The `network` table contains settings pertaining to the management of CNI
@@ -307,6 +332,25 @@ The network name of the default network to attach pods to.
 The subnet to use for the default network (named above in **default_network**).
 If the default network does not exist, it will be automatically created the first time a tool is run using this subnet.
 
+**default_subnet_pools**=[]
+
+DefaultSubnetPools is a list of subnets and size which are used to
+allocate subnets automatically for podman network create.
+It will iterate through the list and will pick the first free subnet
+with the given size. This is only used for ipv4 subnets, ipv6 subnets
+are always assigned randomly.
+
+The default list is (10.89.0.0-10.255.255.0/24):
+```
+default_subnet_pools = [
+  {"base" = "10.89.0.0/16", "size" = 24},
+  {"base" = "10.90.0.0/15", "size" = 24},
+  {"base" = "10.92.0.0/14", "size" = 24},
+  {"base" = "10.96.0.0/11", "size" = 24},
+  {"base" = "10.128.0.0/9", "size" = 24},
+]
+```
+
 **network_config_dir**="/etc/cni/net.d/"
 
 Path to the directory where network configuration files are located.
@@ -314,13 +358,6 @@ For the CNI backend the default is "/etc/cni/net.d" as root
 and "$HOME/.config/cni/net.d" as rootless.
 For the netavark backend "/etc/containers/networks" is used as root
 and "$graphroot/networks" as rootless.
-
-**volumes**=[]
-
-List of volumes.
-Specified as "directory-on-host:directory-in-container:options".
-
-Example:  "/db:/var/lib/db:ro".
 
 ## ENGINE TABLE
 The `engine` table contains configuration options used to set up container engines such as Podman and Buildah.
@@ -384,6 +421,16 @@ if you want to set environment variables for the container.
 **events_logfile_path**=""
 
 Define where event logs will be stored, when events_logger is "file".
+
+**events_logfile_max_size**="1m"
+
+Sets the maximum size for events_logfile_path.
+The unit can be b (bytes), k (kilobytes), m (megabytes) or g (gigabytes).
+The format for the size is `<number><unit>`, e.g., `1b` or `3g`.
+If no unit is included then the size will be in bytes.
+When the limit is exceeded, the logfile will be rotated and the old one will be deleted.
+If the maximumn size is set to 0, then no limit will be applied,
+and the logfile will not be rotated.
 
 **events_logger**="journald"
 
@@ -457,12 +504,6 @@ Change the default only if you are sure of what you are doing, in general
 faster "shm" lock type. You may need to run "podman system renumber" after you
 change the lock type.
 
-**machine_enabled**=false
-
-Indicates if Podman is running inside a VM via Podman Machine.
-Podman uses this value to do extra setup around networking from the
-container inside the VM to to host.
-
 **multi_image_archive**=false
 
 Allows for creating archives (e.g., tarballs) with more than one image. Some container engines, such as Podman, interpret additional arguments as tags for one image and hence do not store more than one image. The default behavior can be altered with this option.
@@ -479,16 +520,16 @@ and pods are visible.
 
 Path to the slirp4netns binary.
 
-**network_cmd_options**=["enable_ipv6=true",]
+**network_cmd_options**=[]
 
 Default options to pass to the slirp4netns binary.
 
 Valid options values are:
 
-  - **allow_host_loopback=true|false**: Allow the slirp4netns to reach the host loopback IP (`10.0.2.2`, which is added to `/etc/hosts` as `host.containers.internal` for your convenience). Default is false.
+  - **allow_host_loopback=true|false**: Allow the slirp4netns to reach the host loopback IP (`10.0.2.2`). Default is false.
   - **mtu=MTU**: Specify the MTU to use for this network. (Default is `65520`).
   - **cidr=CIDR**: Specify ip range to use for this network. (Default is `10.0.2.0/24`).
-  - **enable_ipv6=true|false**: Enable IPv6. Default is false. (Required for `outbound_addr6`).
+  - **enable_ipv6=true|false**: Enable IPv6. Default is true. (Required for `outbound_addr6`).
   - **outbound_addr=INTERFACE**: Specify the outbound interface slirp should bind to (ipv4 traffic only).
   - **outbound_addr=IPv4**: Specify the outbound ipv4 address slirp should bind to.
   - **outbound_addr6=INTERFACE**: Specify the outbound interface slirp should bind to (ipv6 traffic only).
@@ -507,6 +548,15 @@ Number of locks available for containers and pods. Each created container or
 pod consumes one lock. The default number available is 2048. If this is
 changed, a lock renumbering must be performed, using the
 `podman system renumber` command.
+
+**pod_exit_policy**="continue"
+
+Set the exit policy of the pod when the last container exits.  Supported policies are:
+
+| Exit Policy        | Description                                                                 |
+| ------------------ | --------------------------------------------------------------------------- |
+| *continue*         | The pod continues running when the last container exits. Used by default.   |
+| *stop*             | The pod is stopped when the last container exits. Used in `play kube`.      |
 
 **pull_policy**="always"|"missing"|"never"
 
@@ -561,6 +611,10 @@ stores containers.
 
 Number of seconds to wait for container to exit before sending kill signal.
 
+**exit_command_delay**=300
+
+Number of seconds to wait for the API process for the exec call before sending exit command mimicking the Docker behavior of 5 minutes (in seconds).
+
 **tmp_dir**="/run/libpod"
 
 The path to a temporary directory to store per-boot container.
@@ -594,8 +648,8 @@ URI to access the Podman service
 
 - **rootless local**  - unix://run/user/1000/podman/podman.sock
 - **rootless remote** - ssh://user@engineering.lab.company.com/run/user/1000/podman/podman.sock
-- **rootfull local**  - unix://run/podman/podman.sock
-- **rootfull remote** - ssh://root@10.10.1.136:22/run/podman/podman.sock
+- **rootful local**  - unix://run/podman/podman.sock
+- **rootful remote** - ssh://root@10.10.1.136:22/run/podman/podman.sock
 
 **identity="~/.ssh/id_rsa**
 
@@ -649,6 +703,13 @@ Memory in MB a machine is created with.
 
 Username to use and create on the podman machine OS for rootless container
 access. The default value is `user`. On Linux/Mac the default is`core`.
+
+**volumes**=["$HOME:$HOME"]
+
+Host directories to be mounted as volumes into the VM by default.
+Environment variables like $HOME as well as complete paths are supported for
+the source and destination. An optional third field `:ro` can be used to
+tell the container engines to mount the volume readonly.
 
 # FILES
 

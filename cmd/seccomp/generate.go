@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 package main
@@ -26,7 +27,7 @@ func main() {
 		panic(err)
 	}
 
-	if err := ioutil.WriteFile(f, b, 0644); err != nil {
+	if err := ioutil.WriteFile(f, b, 0o644); err != nil {
 		panic(err)
 	}
 }

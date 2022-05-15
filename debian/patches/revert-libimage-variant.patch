@@ -1,0 +1,20 @@
+commit 87d2ff308790659469d0c38e09dfb6919a95ca52 (HEAD -> debian/experimental)
+Author: Reinhard Tartler <siretart@x1.int.tauware.de>
+Date:   Sun May 15 21:14:30 2022 -0400
+
+    Revert "libimage: import should not ignore configured variant if any"
+    
+    This reverts commit ed3dce6bfc79de229dd4ba2d2e76982d582d22ed.
+
+diff --git a/libimage/import.go b/libimage/import.go
+index 3db39278..7776db3a 100644
+--- a/libimage/import.go
++++ b/libimage/import.go
+@@ -58,7 +58,6 @@ func (r *Runtime) Import(ctx context.Context, path string, options *ImportOption
+ 		History:      history,
+ 		OS:           options.OS,
+ 		Architecture: options.Arch,
+-		Variant:      options.Variant,
+ 	}
+ 
+ 	u, err := url.ParseRequestURI(path)
