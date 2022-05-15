@@ -65,11 +65,11 @@ func ValidateSubnet(s *types.Subnet, addGateway bool, usedNetworks []*net.IPNet)
 }
 
 // ValidateSubnets will validate the subnets for this network.
-// It also sets the gateway if the gateway is empty and it sets
+// It also sets the gateway if the gateway is empty and addGateway is set to true
 // IPv6Enabled to true if at least one subnet is ipv6.
-func ValidateSubnets(network *types.Network, usedNetworks []*net.IPNet) error {
+func ValidateSubnets(network *types.Network, addGateway bool, usedNetworks []*net.IPNet) error {
 	for i := range network.Subnets {
-		err := ValidateSubnet(&network.Subnets[i], !network.Internal, usedNetworks)
+		err := ValidateSubnet(&network.Subnets[i], addGateway, usedNetworks)
 		if err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func validatePerNetworkOpts(network *types.Network, netOpts *types.PerNetworkOpt
 	if netOpts.InterfaceName == "" {
 		return errors.Errorf("interface name on network %s is empty", network.Name)
 	}
-	if network.IPAMOptions["driver"] == types.HostLocalIPAMDriver {
+	if network.IPAMOptions[types.Driver] == types.HostLocalIPAMDriver {
 	outer:
 		for _, ip := range netOpts.StaticIPs {
 			for _, s := range network.Subnets {

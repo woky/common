@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package netavark_test
@@ -12,7 +13,7 @@ import (
 
 	"github.com/containers/common/libnetwork/types"
 	"github.com/containers/common/libnetwork/util"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	gomegaTypes "github.com/onsi/gomega/types"
 	"github.com/sirupsen/logrus"
@@ -30,7 +31,6 @@ var _ = Describe("Config", func() {
 		networkConfDir, err = ioutil.TempDir("", "podman_netavark_test")
 		if err != nil {
 			Fail("Failed to create tmpdir")
-
 		}
 		logBuffer = bytes.Buffer{}
 		logrus.SetOutput(&logBuffer)
@@ -49,7 +49,6 @@ var _ = Describe("Config", func() {
 	})
 
 	Context("basic network config tests", func() {
-
 		It("check default network config exists", func() {
 			networks, err := libpodNet.NetworkList()
 			Expect(err).To(BeNil())
@@ -616,7 +615,7 @@ var _ = Describe("Config", func() {
 			Expect(network1.Driver).To(Equal("bridge"))
 			Expect(network1.Subnets).To(HaveLen(1))
 			Expect(network1.Subnets[0].Subnet.String()).ToNot(BeEmpty())
-			Expect(network1.Subnets[0].Gateway).To(BeNil())
+			Expect(network1.Subnets[0].Gateway.String()).ToNot(BeEmpty())
 			Expect(network1.Internal).To(BeTrue())
 		})
 
@@ -729,9 +728,11 @@ var _ = Describe("Config", func() {
 				Internal:   true,
 				DNSEnabled: true,
 			}
-			_, err := libpodNet.NetworkCreate(network)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("cannot set internal and dns enabled"))
+			network1, err := libpodNet.NetworkCreate(network)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(network1.Driver).To(Equal("bridge"))
+			Expect(network1.Internal).To(Equal(true))
+			Expect(network1.DNSEnabled).To(Equal(true))
 		})
 
 		It("network inspect partial ID", func() {
@@ -791,14 +792,20 @@ var _ = Describe("Config", func() {
 			network := types.Network{Driver: "macvlan"}
 			_, err := libpodNet.NetworkCreate(network)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("macvlan driver needs at least one subnet specified, DHCP is not supported with netavark"))
+			Expect(err.Error()).To(Equal("macvlan driver needs at least one subnet specified, DHCP is not yet supported with netavark"))
 		})
 
 		It("create macvlan config with internal", func() {
-			network := types.Network{Driver: "macvlan", Internal: true}
-			_, err := libpodNet.NetworkCreate(network)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(Equal("internal is not supported with macvlan"))
+			subnet := "10.0.0.0/24"
+			n, _ := types.ParseCIDR(subnet)
+			network := types.Network{
+				Driver:   "macvlan",
+				Internal: true,
+				Subnets:  []types.Subnet{{Subnet: n}},
+			}
+			net1, err := libpodNet.NetworkCreate(network)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(net1.Internal).To(Equal(true))
 		})
 
 		It("create macvlan config with subnet", func() {
@@ -949,10 +956,73 @@ var _ = Describe("Config", func() {
 			Expect(network1.Options).To(HaveKeyWithValue("mtu", "9000"))
 		})
 
+		It("create bridge config with none ipam driver", func() {
+			network := types.Network{
+				Driver: "bridge",
+				IPAMOptions: map[string]string{
+					"driver": "none",
+				},
+			}
+			network1, err := libpodNet.NetworkCreate(network)
+			Expect(err).To(BeNil())
+			Expect(network1.Driver).To(Equal("bridge"))
+			Expect(network1.IPAMOptions).ToNot(BeEmpty())
+			Expect(network1.IPAMOptions).To(HaveKeyWithValue("driver", "none"))
+			Expect(network1.Subnets).To(HaveLen(0))
+
+			// reload configs from disk
+			libpodNet, err = getNetworkInterface(networkConfDir)
+			Expect(err).To(BeNil())
+
+			network2, err := libpodNet.NetworkInspect(network1.Name)
+			Expect(err).To(BeNil())
+			EqualNetwork(network2, network1)
+		})
+
+		It("create bridge config with none ipam driver and subnets", func() {
+			subnet := "10.1.0.0/24"
+			n, _ := types.ParseCIDR(subnet)
+			network := types.Network{
+				Driver: "bridge",
+				IPAMOptions: map[string]string{
+					"driver": "none",
+				},
+				Subnets: []types.Subnet{
+					{Subnet: n},
+				},
+			}
+			_, err := libpodNet.NetworkCreate(network)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("none ipam driver is set but subnets are given"))
+		})
+
+		It("create macvlan config with none ipam driver", func() {
+			network := types.Network{
+				Driver: "macvlan",
+				IPAMOptions: map[string]string{
+					"driver": "none",
+				},
+				DNSEnabled: true,
+			}
+			network1, err := libpodNet.NetworkCreate(network)
+			Expect(err).To(BeNil())
+			Expect(network1.Driver).To(Equal("macvlan"))
+			Expect(network1.DNSEnabled).To(BeFalse())
+			Expect(network1.IPAMOptions).ToNot(BeEmpty())
+			Expect(network1.IPAMOptions).To(HaveKeyWithValue("driver", "none"))
+			Expect(network1.Subnets).To(HaveLen(0))
+
+			// reload configs from disk
+			libpodNet, err = getNetworkInterface(networkConfDir)
+			Expect(err).To(BeNil())
+
+			network2, err := libpodNet.NetworkInspect(network1.Name)
+			Expect(err).To(BeNil())
+			EqualNetwork(network2, network1)
+		})
 	})
 
 	Context("network load valid existing ones", func() {
-
 		BeforeEach(func() {
 			dir := "testfiles/valid"
 			files, err := ioutil.ReadDir(dir)
@@ -965,7 +1035,7 @@ var _ = Describe("Config", func() {
 				if err != nil {
 					Fail("Failed to copy test files")
 				}
-				err = ioutil.WriteFile(filepath.Join(networkConfDir, filename), data, 0700)
+				err = ioutil.WriteFile(filepath.Join(networkConfDir, filename), data, 0o700)
 				if err != nil {
 					Fail("Failed to copy test files")
 				}
@@ -1227,7 +1297,6 @@ var _ = Describe("Config", func() {
 	})
 
 	Context("network load invalid existing ones", func() {
-
 		BeforeEach(func() {
 			dir := "testfiles/invalid"
 			files, err := ioutil.ReadDir(dir)
@@ -1240,7 +1309,7 @@ var _ = Describe("Config", func() {
 				if err != nil {
 					Fail("Failed to copy test files")
 				}
-				err = ioutil.WriteFile(filepath.Join(networkConfDir, filename), data, 0700)
+				err = ioutil.WriteFile(filepath.Join(networkConfDir, filename), data, 0o700)
 				if err != nil {
 					Fail("Failed to copy test files")
 				}
@@ -1258,9 +1327,7 @@ var _ = Describe("Config", func() {
 			Expect(logString).To(ContainSubstring("Network config \\\"%s/wrongID.json\\\" could not be parsed, skipping: invalid network ID \\\"someID\\\"", networkConfDir))
 			Expect(logString).To(ContainSubstring("Network config \\\"%s/invalid_gateway.json\\\" could not be parsed, skipping: gateway 10.89.100.1 not in subnet 10.89.9.0/24", networkConfDir))
 		})
-
 	})
-
 })
 
 func grepInFile(path, match string) {
@@ -1277,7 +1344,6 @@ func HaveNetworkName(name string) gomegaTypes.GomegaMatcher {
 }
 
 // EqualNetwork must be used because comparing the time with deep equal does not work
-// nolint:gocritic
 func EqualNetwork(net1, net2 types.Network) {
 	ExpectWithOffset(1, net1.Created.Equal(net2.Created)).To(BeTrue(), "net1 created: %v is not equal net2 created: %v", net1.Created, net2.Created)
 	net1.Created = time.Time{}

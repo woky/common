@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package netavark
@@ -10,7 +11,7 @@ import (
 	"os"
 
 	"github.com/containers/common/libnetwork/types"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 )
@@ -27,7 +28,6 @@ var _ = Describe("IPAM", func() {
 		networkConfDir, err = ioutil.TempDir("", "podman_netavark_test")
 		if err != nil {
 			Fail("Failed to create tmpdir")
-
 		}
 		logBuffer = bytes.Buffer{}
 		logrus.SetOutput(&logBuffer)
@@ -42,9 +42,10 @@ var _ = Describe("IPAM", func() {
 			Fail("Failed to create NewCNINetworkInterface")
 		}
 
-		networkInterface = libpodNet.(*netavarkNetwork)
+		networkInterface = libpodNet.(*netavarkNetwork) //nolint:errcheck // It is always *netavarkNetwork here.
 		// run network list to force a network load
-		networkInterface.NetworkList()
+		_, err = networkInterface.NetworkList()
+		Expect(err).To(BeNil())
 	})
 
 	AfterEach(func() {
@@ -398,10 +399,10 @@ var _ = Describe("IPAM", func() {
 		}
 	})
 
-	It("ipam with dhcp driver should not set ips", func() {
+	It("ipam with none driver should not set ips", func() {
 		network, err := networkInterface.NetworkCreate(types.Network{
 			IPAMOptions: map[string]string{
-				"driver": types.DHCPIPAMDriver,
+				"driver": types.NoneIPAMDriver,
 			},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -429,5 +430,4 @@ var _ = Describe("IPAM", func() {
 		err = networkInterface.deallocIPs(opts)
 		Expect(err).ToNot(HaveOccurred())
 	})
-
 })

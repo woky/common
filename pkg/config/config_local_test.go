@@ -1,3 +1,4 @@
+//go:build !remote
 // +build !remote
 
 package config
@@ -8,7 +9,8 @@ import (
 	"path"
 	"strings"
 
-	. "github.com/onsi/ginkgo"
+	"github.com/containers/common/libnetwork/types"
+	. "github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 )
 
@@ -81,6 +83,55 @@ var _ = Describe("Config Local", func() {
 
 		// Then
 		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	It("should fail on invalid subnet pool", func() {
+		validDirPath, err := ioutil.TempDir("", "config-empty")
+		if err != nil {
+			panic(err)
+		}
+		defer os.RemoveAll(validDirPath)
+		// Given
+		sut.Network.NetworkConfigDir = validDirPath
+		sut.Network.CNIPluginDirs = []string{validDirPath}
+
+		net, _ := types.ParseCIDR("10.0.0.0/24")
+		sut.Network.DefaultSubnetPools = []SubnetPool{
+			{Base: &net, Size: 16},
+		}
+
+		// When
+		err = sut.Network.Validate()
+
+		// Then
+		gomega.Expect(err).NotTo(gomega.BeNil())
+
+		sut.Network.DefaultSubnetPools = []SubnetPool{
+			{Base: &net, Size: 33},
+		}
+
+		// When
+		err = sut.Network.Validate()
+
+		// Then
+		gomega.Expect(err).NotTo(gomega.BeNil())
+	})
+
+	It("parse network subnet pool", func() {
+		config, err := NewConfig("testdata/containers_default.conf")
+		// Then
+		gomega.Expect(err).To(gomega.BeNil())
+		net1, _ := types.ParseCIDR("10.89.0.0/16")
+		net2, _ := types.ParseCIDR("10.90.0.0/15")
+		gomega.Expect(config.Network.DefaultSubnetPools).To(gomega.Equal(
+			[]SubnetPool{{
+				Base: &net1,
+				Size: 24,
+			}, {
+				Base: &net2,
+				Size: 24,
+			}},
+		))
 	})
 
 	It("should fail during runtime", func() {
@@ -211,7 +262,6 @@ var _ = Describe("Config Local", func() {
 		gomega.Expect(config.Engine.Env).To(gomega.BeEquivalentTo(expectedEnv))
 		gomega.Expect(os.Getenv("super")).To(gomega.BeEquivalentTo("duper"))
 		gomega.Expect(os.Getenv("foo")).To(gomega.BeEquivalentTo("bar"))
-
 	})
 
 	It("Expect Remote to be False", func() {
@@ -264,7 +314,8 @@ var _ = Describe("Config Local", func() {
 		os.Setenv("CONTAINERS_CONF", tmpfile)
 		config, err := ReadCustomConfig()
 		gomega.Expect(err).To(gomega.BeNil())
-		config.Containers.Devices = []string{"/dev/null:/dev/null:rw",
+		config.Containers.Devices = []string{
+			"/dev/null:/dev/null:rw",
 			"/dev/sdc/",
 			"/dev/sdc:/dev/xvdc",
 			"/dev/sdc:rm",
@@ -418,5 +469,4 @@ var _ = Describe("Config Local", func() {
 		gomega.Expect(err).To(gomega.BeNil())
 		gomega.Expect(config2.Machine.Memory).To(gomega.Equal(uint64(1024)))
 	})
-
 })

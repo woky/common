@@ -4,6 +4,7 @@
 /docs/*.[158].gz
 *.o
 *.rej
+*.test
 *.orig
 .gopathok
 .idea*
@@ -13,3 +14,4 @@ contrib/spec/podman.spec
 *~
 build
 ./generate
+*.coverprofile

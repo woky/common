@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package netavark_test
@@ -27,7 +28,7 @@ import (
 	"github.com/containers/common/pkg/netns"
 	"github.com/containers/storage/pkg/stringid"
 	"github.com/containers/storage/pkg/unshare"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"
@@ -44,7 +45,7 @@ var _ = Describe("run netavark", func() {
 	// runTest is a helper function to run a test. It ensures that each test
 	// is run in its own netns. It also creates a mountns to mount a tmpfs to /var/lib/cni.
 	runTest := func(run func()) {
-		netNSTest.Do(func(_ ns.NetNS) error {
+		_ = netNSTest.Do(func(_ ns.NetNS) error {
 			defer GinkgoRecover()
 			// we have to setup the loopback adapter in this netns to use port forwarding
 			link, err := netlink.LinkByName("lo")
@@ -105,13 +106,13 @@ var _ = Describe("run netavark", func() {
 	AfterEach(func() {
 		logrus.SetFormatter(&logrus.TextFormatter{})
 		logrus.SetLevel(logrus.InfoLevel)
-		os.RemoveAll(confDir)
+		_ = os.RemoveAll(confDir)
 
-		netns.UnmountNS(netNSTest)
-		netNSTest.Close()
+		_ = netns.UnmountNS(netNSTest)
+		_ = netNSTest.Close()
 
-		netns.UnmountNS(netNSContainer)
-		netNSContainer.Close()
+		_ = netns.UnmountNS(netNSContainer)
+		_ = netNSContainer.Close()
 
 		_ = os.Unsetenv("NETAVARK_FW")
 	})
@@ -249,9 +250,7 @@ var _ = Describe("run netavark", func() {
 				return nil
 			})
 			Expect(err).To(BeNil())
-
 		})
-
 	})
 
 	It("setup two containers", func() {
@@ -287,8 +286,8 @@ var _ = Describe("run netavark", func() {
 
 			netNSContainer2, err := netns.NewNS()
 			Expect(err).ToNot(HaveOccurred())
-			defer netns.UnmountNS(netNSContainer2)
-			defer netNSContainer2.Close()
+			defer netns.UnmountNS(netNSContainer2) //nolint:errcheck
+			defer netNSContainer2.Close()          //nolint:errcheck
 
 			res, err = libpodNet.Setup(netNSContainer2.Path(), setupOpts2)
 			Expect(err).ToNot(HaveOccurred())
@@ -699,6 +698,90 @@ var _ = Describe("run netavark", func() {
 			Expect(err.Error()).To(ContainSubstring("interface eth0 already exists on container namespace"))
 		})
 	})
+
+	It("setup ipam driver none network", func() {
+		runTest(func() {
+			network := types.Network{
+				IPAMOptions: map[string]string{
+					types.Driver: types.NoneIPAMDriver,
+				},
+				DNSEnabled: true,
+			}
+			network1, err := libpodNet.NetworkCreate(network)
+			Expect(err).To(BeNil())
+
+			intName1 := "eth0"
+			netName1 := network1.Name
+
+			setupOpts := types.SetupOptions{
+				NetworkOptions: types.NetworkOptions{
+					ContainerID: stringid.GenerateNonCryptoID(),
+					Networks: map[string]types.PerNetworkOptions{
+						netName1: {
+							InterfaceName: intName1,
+						},
+					},
+				},
+			}
+
+			res, err := libpodNet.Setup(netNSContainer.Path(), setupOpts)
+			Expect(err).To(BeNil())
+			Expect(res).To(HaveLen(1))
+
+			Expect(res).To(HaveKey(netName1))
+			Expect(res[netName1].Interfaces).To(HaveKey(intName1))
+			Expect(res[netName1].Interfaces[intName1].Subnets).To(HaveLen(0))
+			macInt1 := res[netName1].Interfaces[intName1].MacAddress
+			Expect(macInt1).To(HaveLen(6))
+
+			// check in the container namespace if the settings are applied
+			err = netNSContainer.Do(func(_ ns.NetNS) error {
+				defer GinkgoRecover()
+				i, err := net.InterfaceByName(intName1)
+				Expect(err).To(BeNil())
+				Expect(i.Name).To(Equal(intName1))
+				Expect(i.HardwareAddr).To(Equal(net.HardwareAddr(macInt1)))
+				addrs, err := i.Addrs()
+				Expect(err).To(BeNil())
+				// we still have the ipv6 link local address
+				Expect(addrs).To(HaveLen(1))
+				addr, ok := addrs[0].(*net.IPNet)
+				Expect(ok).To(BeTrue(), "cast address to ipnet")
+				// make sure we are link local
+				Expect(addr.IP.IsLinkLocalUnicast()).To(BeTrue(), "ip is link local address")
+
+				// check loopback adapter
+				i, err = net.InterfaceByName("lo")
+				Expect(err).To(BeNil())
+				Expect(i.Name).To(Equal("lo"))
+				Expect(i.Flags & net.FlagLoopback).To(Equal(net.FlagLoopback))
+				Expect(i.Flags&net.FlagUp).To(Equal(net.FlagUp), "Loopback adapter should be up")
+				return nil
+			})
+			Expect(err).To(BeNil())
+
+			err = libpodNet.Teardown(netNSContainer.Path(), types.TeardownOptions(setupOpts))
+			Expect(err).To(BeNil())
+
+			// check in the container namespace that the interface is removed
+			err = netNSContainer.Do(func(_ ns.NetNS) error {
+				defer GinkgoRecover()
+				_, err := net.InterfaceByName(intName1)
+				Expect(err).To(HaveOccurred())
+
+				// check that only the loopback adapter is left
+				ints, err := net.Interfaces()
+				Expect(err).To(BeNil())
+				Expect(ints).To(HaveLen(1))
+				Expect(ints[0].Name).To(Equal("lo"))
+				Expect(ints[0].Flags & net.FlagLoopback).To(Equal(net.FlagLoopback))
+				Expect(ints[0].Flags&net.FlagUp).To(Equal(net.FlagUp), "Loopback adapter should be up")
+
+				return nil
+			})
+			Expect(err).To(BeNil())
+		})
+	})
 })
 
 func runNetListener(wg *sync.WaitGroup, protocol, ip string, port int, expectedData string) {
@@ -714,7 +797,8 @@ func runNetListener(wg *sync.WaitGroup, protocol, ip string, port int, expectedD
 			conn, err := ln.Accept()
 			Expect(err).To(BeNil())
 			defer conn.Close()
-			conn.SetDeadline(time.Now().Add(1 * time.Second))
+			err = conn.SetDeadline(time.Now().Add(1 * time.Second))
+			Expect(err).To(BeNil())
 			data, err := ioutil.ReadAll(conn)
 			Expect(err).To(BeNil())
 			Expect(string(data)).To(Equal(expectedData))
@@ -725,7 +809,8 @@ func runNetListener(wg *sync.WaitGroup, protocol, ip string, port int, expectedD
 			Port: port,
 		})
 		Expect(err).To(BeNil())
-		conn.SetDeadline(time.Now().Add(1 * time.Second))
+		err = conn.SetDeadline(time.Now().Add(1 * time.Second))
+		Expect(err).To(BeNil())
 		go func() {
 			defer GinkgoRecover()
 			defer wg.Done()
