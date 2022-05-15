@@ -58,7 +58,6 @@ func (r *Runtime) Import(ctx context.Context, path string, options *ImportOption
 		History:      history,
 		OS:           options.OS,
 		Architecture: options.Arch,
-		Variant:      options.Variant,
 	}
 
 	u, err := url.ParseRequestURI(path)
