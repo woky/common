@@ -37,7 +37,9 @@ XS-Go-Import-Path: github.com/containers/common
 Package: golang-github-containers-common
 Architecture: all
 Depends: golang-github-containers-image,
+         container-network-stack,
          ${misc:Depends}
+Recommends: netavark
 Breaks: buildah (<< 1.19.2+dfsg1-2~~)
 Description: Common files for github.com/containers repositories
  This package contains common configuration files for use by
