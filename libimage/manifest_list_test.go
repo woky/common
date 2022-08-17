@@ -2,11 +2,11 @@ package libimage
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/containers/common/pkg/config"
 	"github.com/containers/storage"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,13 +30,51 @@ func TestCreateManifestList(t *testing.T) {
 
 	_, err = runtime.LookupManifestList("nosuchthing")
 	require.Error(t, err)
-	require.Equal(t, errors.Cause(err), storage.ErrImageUnknown)
+	require.True(t, errors.Is(err, storage.ErrImageUnknown))
 
 	_, err = runtime.Pull(ctx, "busybox", config.PullPolicyMissing, nil)
 	require.NoError(t, err)
 	_, err = runtime.LookupManifestList("busybox")
 	require.Error(t, err)
-	require.Equal(t, errors.Cause(err), ErrNotAManifestList)
+	require.True(t, errors.Is(err, ErrNotAManifestList))
+}
+
+// Inspect must contain both formats i.e OCIv1 and docker
+func TestInspectManifestListWithAnnotations(t *testing.T) {
+	listName := "testinspect"
+	runtime, cleanup := testNewRuntime(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	list, err := runtime.CreateManifestList(listName)
+	require.NoError(t, err)
+	require.NotNil(t, list)
+
+	manifestListOpts := &ManifestListAddOptions{All: true}
+	_, err = list.Add(ctx, "docker://busybox", manifestListOpts)
+	require.NoError(t, err)
+
+	list, err = runtime.LookupManifestList(listName)
+	require.NoError(t, err)
+	require.NotNil(t, list)
+
+	inspectReport, err := list.Inspect()
+	// get digest of the first instance
+	digest := inspectReport.Manifests[0].Digest
+	require.NoError(t, err)
+
+	annotateOptions := ManifestListAnnotateOptions{}
+	annotations := make(map[string]string)
+	annotations["hello"] = "world"
+	annotateOptions.Annotations = annotations
+
+	err = list.AnnotateInstance(digest, &annotateOptions)
+	require.NoError(t, err)
+	// Inspect list again
+	inspectReport, err = list.Inspect()
+	require.NoError(t, err)
+	// verify annotation
+	require.Equal(t, inspectReport.Manifests[0].Annotations, annotations)
 }
 
 // Following test ensure that `Tag` tags the manifest list instead of resolved image.

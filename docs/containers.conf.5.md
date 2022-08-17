@@ -359,6 +359,13 @@ and "$HOME/.config/cni/net.d" as rootless.
 For the netavark backend "/etc/containers/networks" is used as root
 and "$graphroot/networks" as rootless.
 
+**dns_bind_port**=53
+
+Port to use for dns forwarding daemon with netavark in rootful bridge
+mode and dns enabled.
+Using an alternate port might be useful if other dns services should
+run on the machine.
+
 ## ENGINE TABLE
 The `engine` table contains configuration options used to set up container engines such as Podman and Buildah.
 
@@ -434,8 +441,15 @@ and the logfile will not be rotated.
 
 **events_logger**="journald"
 
-Default method to use when logging events.
-Valid values: `file`, `journald`, and `none`.
+The default method to use when logging events.  
+
+The default method is different based on the platform that
+Podman is being run upon.  To determine the current value,
+use this command:
+
+`podman info --format {{.Host.EventLogger}`
+
+Valid values are: `file`, `journald`, and `none`.
 
 **helper_binaries_dir**=["/usr/libexec/podman", ...]
 
@@ -479,6 +493,14 @@ Default transport method for pulling and pushing images.
 
 Maximum number of image layers to be copied (pulled/pushed) simultaneously.
 Not setting this field will fall back to containers/image defaults. (6)
+
+**image_volume_mode**="bind"
+
+Tells container engines how to handle the builtin image volumes.
+
+* bind: An anonymous named volume will be  created  and  mounted into the container.
+* tmpfs: The volume is mounted onto the container as a tmpfs, which allows the users to create content that disappears when the container is stopped.
+* ignore: All volumes are just ignored and no action is taken.
 
 **infra_command**="/pause"
 

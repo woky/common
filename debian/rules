@@ -20,5 +20,5 @@ override_dh_auto_install:
 	make -C docs install install DESTDIR=$(CURDIR)/debian/golang-github-containers-common PREFIX=/usr
 
 override_dh_auto_test:
-	DH_GOLANG_EXCLUDES="pkg/auth pkg/cgroupv2 pkg/machine pkg/config libimage pkg/secrets/passdriver libnetwork/cni libnetwork/netavark" \
+	DH_GOLANG_EXCLUDES="pkg/auth pkg/cgroupv2 pkg/machine pkg/config pkg/cgroups libimage pkg/secrets/passdriver libnetwork/cni libnetwork/netavark" \
 	dh_auto_test

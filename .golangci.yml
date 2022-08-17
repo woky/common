@@ -13,6 +13,12 @@ linters:
   enable:
     - dupl
     - gocritic
+    - unparam
+    - exportloopref
+    - revive
+    - prealloc
+    - makezero
+    - gofumpt
 linters-settings:
   errcheck:
     check-type-assertions: true
