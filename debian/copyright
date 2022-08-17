@@ -17,24 +17,46 @@ Copyright: 2020, Reinhard Tartler <siretart@tauware.de>
 License: Apache-2.0
 Comment: Debian packaging is licensed under the same terms as upstream
 
+Files: libnetwork/cni/cni_exec.go
+Copyright: 2021, Podman authors
+ 2016, CNI authors
+License: Apache-2.0
+
+Files: libnetwork/util/ip_calc.go
+Copyright: 2015, 2018, CNI authors
+License: Apache-2.0
+
 Files: pkg/apparmor/apparmor_linux.go
   pkg/apparmor/apparmor_linux_test.go
 Copyright: 2009-2012, Canonical Ltd.
-  1999-2008, Novell Inc.
+ 1999-2008, Novell Inc.
 License: Apache-2.0
 
 Files: pkg/capabilities/capabilities.go
 Copyright: 2013-2021, Docker, Inc.
 License: Apache-2.0
 
+Files: pkg/cgroups/systemd.go
+  pkg/cgroups/systemd_linux.go
+Copyright: The containerd Authors.
+License: Apache-2.0
+
+Files: pkg/netns/*
+Copyright: 2015, 2018, CNI authors
+License: Apache-2.0
+
 Files: pkg/report/camelcase/*
-Copyright: 2015, Fatih Arslan
- 2018, github.com/containers/common authors
+Copyright: 2018, github.com/containers/common authors
+ 2015, Fatih Arslan
 License: Apache-2.0 or Expat
 
 Files: pkg/report/camelcase/README.md
   pkg/report/camelcase/camelcase.go
 Copyright: 2018, github.com/containers/common authors
+License: Apache-2.0
+
+Files: pkg/resize/*
+Copyright: 2015, The Kubernetes Authors.
 License: Apache-2.0
 
 Files: pkg/seccomp/default_linux.go
