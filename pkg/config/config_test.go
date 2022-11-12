@@ -34,6 +34,7 @@ var _ = Describe("Config", func() {
 			gomega.Expect(defaultConfig.IPCNS()).To(gomega.BeEquivalentTo("shareable"))
 			gomega.Expect(defaultConfig.Engine.InfraImage).To(gomega.BeEquivalentTo(""))
 			gomega.Expect(defaultConfig.Engine.ImageVolumeMode).To(gomega.BeEquivalentTo("bind"))
+			gomega.Expect(defaultConfig.Engine.SSHConfig).To(gomega.ContainSubstring("/.ssh/config"))
 			path, err := defaultConfig.ImageCopyTmpDir()
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(path).To(gomega.BeEquivalentTo("/var/tmp"))
@@ -364,7 +365,7 @@ image_copy_tmp_dir="storage"`
 				gomega.Expect(config.Engine.EventsLogger).To(gomega.BeEquivalentTo("file"))
 				gomega.Expect(config.Containers.LogDriver).To(gomega.BeEquivalentTo("k8s-file"))
 			}
-			gomega.Expect(config.Engine.EventsLogFilePath).To(gomega.BeEquivalentTo(config.Engine.TmpDir + "/events/events.log"))
+			gomega.Expect(config.Engine.EventsLogFilePath).To(gomega.BeEquivalentTo(""))
 			gomega.Expect(uint64(config.Engine.EventsLogFileMaxSize)).To(gomega.Equal(DefaultEventsLogSizeMax))
 			gomega.Expect(config.Engine.PodExitPolicy).To(gomega.Equal(PodExitPolicyContinue))
 		})
@@ -380,6 +381,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(config.Containers.BaseHostsFile).To(gomega.BeEquivalentTo("/etc/hosts2"))
 			gomega.Expect(config.Containers.HostContainersInternalIP).To(gomega.BeEquivalentTo("1.2.3.4"))
 			gomega.Expect(config.Engine.ImageVolumeMode).To(gomega.BeEquivalentTo("tmpfs"))
+			gomega.Expect(config.Engine.SSHConfig).To(gomega.Equal("/foo/bar/.ssh/config"))
 		})
 
 		It("contents of passed-in file should override others", func() {
@@ -586,9 +588,10 @@ image_copy_tmp_dir="storage"`
 			cfg, err = ReadCustomConfig()
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-			u, i, err := cfg.ActiveDestination()
+			u, i, m, err := cfg.ActiveDestination()
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
+			gomega.Expect(m).To(gomega.Equal(false))
 			gomega.Expect(u).To(gomega.Equal("https://qa/run/podman/podman.sock"))
 			gomega.Expect(i).To(gomega.Equal("/.ssh/id_rsa"))
 		})
@@ -618,7 +621,7 @@ image_copy_tmp_dir="storage"`
 			oldContainerConnection, hostEnvSet := os.LookupEnv("CONTAINER_CONNECTION")
 			os.Setenv("CONTAINER_CONNECTION", "QB")
 
-			u, i, err := cfg.ActiveDestination()
+			u, i, m, err := cfg.ActiveDestination()
 			// Undo that
 			if hostEnvSet {
 				os.Setenv("CONTAINER_CONNECTION", oldContainerConnection)
@@ -626,6 +629,7 @@ image_copy_tmp_dir="storage"`
 				os.Unsetenv("CONTAINER_CONNECTION")
 			}
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			gomega.Expect(m).To(gomega.Equal(false))
 
 			gomega.Expect(u).To(gomega.Equal("https://qb/run/podman/podman.sock"))
 			gomega.Expect(i).To(gomega.Equal("/.ssh/qb_id_rsa"))
@@ -658,7 +662,8 @@ image_copy_tmp_dir="storage"`
 			os.Setenv("CONTAINER_HOST", "foo.bar")
 			os.Setenv("CONTAINER_SSHKEY", "/.ssh/newid_rsa")
 
-			u, i, err := cfg.ActiveDestination()
+			u, i, m, err := cfg.ActiveDestination()
+
 			// Undo that
 			if hostEnvSet {
 				os.Setenv("CONTAINER_HOST", oldContainerHost)
@@ -673,6 +678,7 @@ image_copy_tmp_dir="storage"`
 			}
 
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			gomega.Expect(m).To(gomega.Equal(false))
 
 			gomega.Expect(u).To(gomega.Equal("foo.bar"))
 			gomega.Expect(i).To(gomega.Equal("/.ssh/newid_rsa"))
@@ -682,7 +688,7 @@ image_copy_tmp_dir="storage"`
 			cfg, err := ReadCustomConfig()
 			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
-			_, _, err = cfg.ActiveDestination()
+			_, _, _, err = cfg.ActiveDestination()
 			gomega.Expect(err).Should(gomega.HaveOccurred())
 		})
 
