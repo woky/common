@@ -1,0 +1,6 @@
+---
+Bug-Database: https://github.com/containers/common/issues
+Bug-Submit: https://github.com/containers/common/issues/new
+Repository: https://github.com/containers/common.git
+Repository-Browse: https://github.com/containers/common
+Security-Contact: https://github.com/containers/common/tree/HEAD/SECURITY.md

@@ -1,3 +1,27 @@
+golang-github-containers-common (0.50.1+ds1-3) unstable; urgency=medium
+
+  * Team upload
+
+  [ Reinhard Tartler ]
+  * Tighten build depends
+
+  [ Debian Janitor ]
+  * Bump debhelper from old 12 to 13.
+  * Set upstream metadata fields: Bug-Database, Bug-Submit, Repository-Browse.
+  * Update standards version to 4.6.2, no changes needed.
+  * Set upstream metadata fields: Repository, Security-Contact.
+
+  [ Shengjing Zhu ]
+  * Update section to golang
+  * Replace transitional package in Build-Depends and Depends
+    + golang-logrus-dev -> golang-github-sirupsen-logrus-dev
+    + golang-toml-dev -> golang-github-burntsushi-toml-dev
+    And format with wrap-and-sort
+  * Update dependencies according to go.mod
+  * Add Multi-Arch hint
+
+ -- Shengjing Zhu <zhsj@debian.org>  Mon, 30 Jan 2023 18:34:42 +0800
+
 golang-github-containers-common (0.50.1+ds1-2) unstable; urgency=medium
 
   * upload to unstable
