@@ -88,21 +88,23 @@ List of default capabilities for containers.
 The default list is:
 ```
 default_capabilities = [
-"AUDIT_WRITE",
       "CHOWN",
       "DAC_OVERRIDE",
       "FOWNER",
       "FSETID",
       "KILL",
-      "MKNOD",
       "NET_BIND_SERVICE",
-      "NET_RAW",
+      "SETFCAP",
       "SETGID",
       "SETPCAP",
       "SETUID",
-      "SYS_CHROOT",
 ]
 ```
+
+Note, by default container engines using containers.conf, run with less
+capabilities than Docker. Docker runs additionally with "AUDIT_WRITE", "MKNOD",
+"NET_RAW", "CHROOT". If you need to add one of these capabilities for a
+particular container, you can use the --cap-add option or edit your system's containers.conf.
 
 **default_sysctls**=[]
 
@@ -241,6 +243,10 @@ is imposed.
 
 Copy the content from the underlying image into the newly created volume when the container is created instead of when it is started. If `false`, the container engine will not copy the content until the container is started. Setting it to `true` may have negative performance implications.
 
+**read_only**=true|false
+
+Run all containers with root file system mounted read-only. Set to false by default.
+
 **seccomp_profile**="/usr/share/containers/seccomp.json"
 
 Path to the seccomp.json profile which is used as the default seccomp profile
@@ -274,11 +280,6 @@ Default way to to create a USER namespace for the container.
 Options are:
   `private` Create private USER Namespace for the container.
   `host`    Share host USER Namespace with the container.
-
-**userns_size**=65536
-
-Number of UIDs to allocate for the automatic container creation. UIDs are
-allocated from the “container” UIDs listed in /etc/subuid & /etc/subgid.
 
 **utsns**="private"
 
@@ -451,6 +452,11 @@ use this command:
 
 Valid values are: `file`, `journald`, and `none`.
 
+**events_container_create_inspect_data**=true|false
+
+Creates a more verbose container-create event which includes a JSON payload
+with detailed information about the container.  Set to false by default.
+
 **helper_binaries_dir**=["/usr/libexec/podman", ...]
 
 A is a list of directories which are used to search for helper binaries.
@@ -598,7 +604,7 @@ Default OCI specific runtime in runtimes that will be used by default. Must
 refer to a member of the runtimes table. Default runtime will be searched for
 on the system using the priority: "crun", "runc", "kata".
 
-**runtime_supports_json**=["crun", "runc", "kata", "runsc", "krun"]
+**runtime_supports_json**=["crun", "runc", "kata", "runsc", "youki", "krun"]
 
 The list of the OCI runtimes that support `--format=json`.
 
@@ -684,6 +690,10 @@ used as the backend for Podman named volumes. Individual plugins are specified
 below, as a map of the plugin name (what the plugin will be called) to its path
 (filepath of the plugin's unix socket).
 
+**[engine.platform_to_oci_runtime]**
+
+Allows end users to switch the OCI runtime on the bases of container image's platform string.
+Following config field contains a map of `platform/string = oci_runtime`.
 
 ## SECRET TABLE
 The `secret` table contains settings for the configuration of the secret subsystem.
@@ -734,6 +744,8 @@ Host directories to be mounted as volumes into the VM by default.
 Environment variables like $HOME as well as complete paths are supported for
 the source and destination. An optional third field `:ro` can be used to
 tell the container engines to mount the volume readonly.
+
+On Mac, the default volumes are: `"/Users:/Users", "/private:/private", "/var/folders:/var/folders"`
 
 # FILES
 

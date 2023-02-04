@@ -16,7 +16,7 @@ package cni_test
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -78,7 +78,7 @@ var _ = Describe("run CNI", func() {
 		}
 
 		var err error
-		cniConfDir, err = ioutil.TempDir("", "podman_cni_test")
+		cniConfDir, err = os.MkdirTemp("", "podman_cni_test")
 		if err != nil {
 			Fail("Failed to create tmpdir")
 		}
@@ -109,10 +109,10 @@ var _ = Describe("run CNI", func() {
 		logrus.SetLevel(logrus.InfoLevel)
 		_ = os.RemoveAll(cniConfDir)
 
-		_ = netns.UnmountNS(netNSTest)
+		_ = netns.UnmountNS(netNSTest.Path())
 		_ = netNSTest.Close()
 
-		_ = netns.UnmountNS(netNSContainer)
+		_ = netns.UnmountNS(netNSContainer.Path())
 		_ = netNSContainer.Close()
 	})
 
@@ -362,7 +362,7 @@ var _ = Describe("run CNI", func() {
 		It("call setup twice", func() {
 			runTest(func() {
 				network := types.Network{}
-				network1, err := libpodNet.NetworkCreate(network)
+				network1, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 
 				intName1 := "eth0"
@@ -419,7 +419,7 @@ var _ = Describe("run CNI", func() {
 				Expect(err).To(BeNil())
 
 				network = types.Network{}
-				network2, err := libpodNet.NetworkCreate(network)
+				network2, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 
 				intName2 := "eth1"
@@ -541,7 +541,7 @@ var _ = Describe("run CNI", func() {
 						{Subnet: subnet1},
 					},
 				}
-				network1, err := libpodNet.NetworkCreate(network)
+				network1, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 
 				network = types.Network{
@@ -549,7 +549,7 @@ var _ = Describe("run CNI", func() {
 						{Subnet: subnet2},
 					},
 				}
-				network2, err := libpodNet.NetworkCreate(network)
+				network2, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 
 				intName1 := "eth0"
@@ -672,7 +672,7 @@ var _ = Describe("run CNI", func() {
 						{Subnet: subnet1}, {Subnet: subnet2},
 					},
 				}
-				network1, err := libpodNet.NetworkCreate(network)
+				network1, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 
 				mac, _ := net.ParseMAC("40:15:2f:d8:42:36")
@@ -776,7 +776,7 @@ var _ = Describe("run CNI", func() {
 						{Subnet: subnet1},
 					},
 				}
-				network1, err := libpodNet.NetworkCreate(network)
+				network1, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 				netName := network1.Name
 				intName := "eth0"
@@ -837,7 +837,7 @@ var _ = Describe("run CNI", func() {
 					},
 					DNSEnabled: true,
 				}
-				network1, err := libpodNet.NetworkCreate(network)
+				network1, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 
 				intName1 := "eth0"
@@ -919,17 +919,17 @@ var _ = Describe("run CNI", func() {
 	Context("network setup test with networks from disk", func() {
 		BeforeEach(func() {
 			dir := "testfiles/valid"
-			files, err := ioutil.ReadDir(dir)
+			files, err := os.ReadDir(dir)
 			if err != nil {
 				Fail("Failed to read test directory")
 			}
 			for _, file := range files {
 				filename := file.Name()
-				data, err := ioutil.ReadFile(filepath.Join(dir, filename))
+				data, err := os.ReadFile(filepath.Join(dir, filename))
 				if err != nil {
 					Fail("Failed to copy test files")
 				}
-				err = ioutil.WriteFile(filepath.Join(cniConfDir, filename), data, 0o700)
+				err = os.WriteFile(filepath.Join(cniConfDir, filename), data, 0o700)
 				if err != nil {
 					Fail("Failed to copy test files")
 				}
@@ -1195,7 +1195,7 @@ var _ = Describe("run CNI", func() {
 						{Subnet: subnet1},
 					},
 				}
-				network1, err := libpodNet.NetworkCreate(network)
+				network1, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 
 				subnet2, _ := types.ParseCIDR("192.168.1.0/31")
@@ -1204,7 +1204,7 @@ var _ = Describe("run CNI", func() {
 						{Subnet: subnet2},
 					},
 				}
-				network2, err := libpodNet.NetworkCreate(network)
+				network2, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 
 				intName1 := "eth0"
@@ -1345,7 +1345,7 @@ var _ = Describe("run CNI", func() {
 		It("teardown on not connected network", func() {
 			runTest(func() {
 				network := types.Network{}
-				network1, err := libpodNet.NetworkCreate(network)
+				network1, err := libpodNet.NetworkCreate(network, nil)
 				Expect(err).To(BeNil())
 
 				interfaceName := "eth0"
@@ -1384,7 +1384,7 @@ func runNetListener(wg *sync.WaitGroup, protocol, ip string, port int, expectedD
 			Expect(err).To(BeNil())
 			err = conn.SetDeadline(time.Now().Add(1 * time.Second))
 			Expect(err).To(BeNil())
-			data, err := ioutil.ReadAll(conn)
+			data, err := io.ReadAll(conn)
 			Expect(err).To(BeNil())
 			Expect(string(data)).To(Equal(expectedData))
 			conn.Close()

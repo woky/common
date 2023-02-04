@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -39,7 +39,7 @@ func NewDriver(rootPath string) (*Driver, error) {
 		return nil, err
 	}
 
-	lock, err := lockfile.GetLockfile(filepath.Join(rootPath, "configMapsdata.lock"))
+	lock, err := lockfile.GetLockFile(filepath.Join(rootPath, "configMapsdata.lock"))
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func (d *Driver) Store(id string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(d.configMapsDataFilePath, marshalled, 0o600)
+	err = os.WriteFile(d.configMapsDataFilePath, marshalled, 0o600)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (d *Driver) Delete(id string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(d.configMapsDataFilePath, marshalled, 0o600)
+	err = os.WriteFile(d.configMapsDataFilePath, marshalled, 0o600)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (d *Driver) getAllData() (map[string][]byte, error) {
 	}
 	defer file.Close()
 
-	byteValue, err := ioutil.ReadAll(file)
+	byteValue, err := io.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}

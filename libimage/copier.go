@@ -99,6 +99,9 @@ type CopyOptions struct {
 	PolicyAllowStorage bool
 	// SignaturePolicyPath to overwrite the default one.
 	SignaturePolicyPath string
+	// If non-empty, asks for signatures to be added during the copy
+	// using the provided signers.
+	//Signers []*signer.Signer
 	// If non-empty, asks for a signature to be added during the copy, and
 	// specifies a key ID.
 	SignBy string
@@ -299,6 +302,7 @@ func (r *Runtime) newCopier(options *CopyOptions) (*copier, error) {
 	c.imageCopyOptions.OciEncryptLayers = options.OciEncryptLayers
 	c.imageCopyOptions.OciDecryptConfig = options.OciDecryptConfig
 	c.imageCopyOptions.RemoveSignatures = options.RemoveSignatures
+	//c.imageCopyOptions.Signers = options.Signers
 	c.imageCopyOptions.SignBy = options.SignBy
 	c.imageCopyOptions.SignPassphrase = options.SignPassphrase
 	c.imageCopyOptions.SignBySigstorePrivateKeyFile = options.SignBySigstorePrivateKeyFile

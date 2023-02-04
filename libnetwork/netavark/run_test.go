@@ -15,7 +15,7 @@ package netavark_test
 // })
 
 import (
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -75,7 +75,7 @@ var _ = Describe("run netavark", func() {
 		}
 
 		var err error
-		confDir, err = ioutil.TempDir("", "podman_netavark_test")
+		confDir, err = os.MkdirTemp("", "podman_netavark_test")
 		if err != nil {
 			Fail("Failed to create tmpdir")
 		}
@@ -108,10 +108,10 @@ var _ = Describe("run netavark", func() {
 		logrus.SetLevel(logrus.InfoLevel)
 		_ = os.RemoveAll(confDir)
 
-		_ = netns.UnmountNS(netNSTest)
+		_ = netns.UnmountNS(netNSTest.Path())
 		_ = netNSTest.Close()
 
-		_ = netns.UnmountNS(netNSContainer)
+		_ = netns.UnmountNS(netNSContainer.Path())
 		_ = netNSContainer.Close()
 
 		_ = os.Unsetenv("NETAVARK_FW")
@@ -286,8 +286,8 @@ var _ = Describe("run netavark", func() {
 
 			netNSContainer2, err := netns.NewNS()
 			Expect(err).ToNot(HaveOccurred())
-			defer netns.UnmountNS(netNSContainer2) //nolint:errcheck
-			defer netNSContainer2.Close()          //nolint:errcheck
+			defer netns.UnmountNS(netNSContainer2.Path()) //nolint:errcheck
+			defer netNSContainer2.Close()                 //nolint:errcheck
 
 			res, err = libpodNet.Setup(netNSContainer2.Path(), setupOpts2)
 			Expect(err).ToNot(HaveOccurred())
@@ -311,11 +311,14 @@ var _ = Describe("run netavark", func() {
 		runTest(func() {
 			s1, _ := types.ParseCIDR("10.0.0.1/24")
 			s2, _ := types.ParseCIDR("fd10:88:a::/64")
-			network, err := libpodNet.NetworkCreate(types.Network{
-				Subnets: []types.Subnet{
-					{Subnet: s1}, {Subnet: s2},
+			network, err := libpodNet.NetworkCreate(
+				types.Network{
+					Subnets: []types.Subnet{
+						{Subnet: s1}, {Subnet: s2},
+					},
 				},
-			})
+				nil,
+			)
 			Expect(err).ToNot(HaveOccurred())
 
 			netName := network.Name
@@ -391,22 +394,28 @@ var _ = Describe("run netavark", func() {
 	It("setup two networks", func() {
 		runTest(func() {
 			s1, _ := types.ParseCIDR("10.0.0.1/24")
-			network1, err := libpodNet.NetworkCreate(types.Network{
-				Subnets: []types.Subnet{
-					{Subnet: s1},
+			network1, err := libpodNet.NetworkCreate(
+				types.Network{
+					Subnets: []types.Subnet{
+						{Subnet: s1},
+					},
 				},
-			})
+				nil,
+			)
 			Expect(err).ToNot(HaveOccurred())
 
 			netName1 := network1.Name
 			intName1 := "eth0"
 
 			s2, _ := types.ParseCIDR("10.1.0.0/24")
-			network2, err := libpodNet.NetworkCreate(types.Network{
-				Subnets: []types.Subnet{
-					{Subnet: s2},
+			network2, err := libpodNet.NetworkCreate(
+				types.Network{
+					Subnets: []types.Subnet{
+						{Subnet: s2},
+					},
 				},
-			})
+				nil,
+			)
 			Expect(err).ToNot(HaveOccurred())
 
 			netName2 := network2.Name
@@ -707,7 +716,7 @@ var _ = Describe("run netavark", func() {
 				},
 				DNSEnabled: true,
 			}
-			network1, err := libpodNet.NetworkCreate(network)
+			network1, err := libpodNet.NetworkCreate(network, nil)
 			Expect(err).To(BeNil())
 
 			intName1 := "eth0"
@@ -799,7 +808,7 @@ func runNetListener(wg *sync.WaitGroup, protocol, ip string, port int, expectedD
 			defer conn.Close()
 			err = conn.SetDeadline(time.Now().Add(1 * time.Second))
 			Expect(err).To(BeNil())
-			data, err := ioutil.ReadAll(conn)
+			data, err := io.ReadAll(conn)
 			Expect(err).To(BeNil())
 			Expect(string(data)).To(Equal(expectedData))
 		}()
