@@ -1,3 +1,15 @@
+golang-github-containers-common (0.51.0+ds1-1) experimental; urgency=medium
+
+  [ Shengjing Zhu ]
+  * Fix uscan watch file
+
+  [ Reinhard Tartler ]
+  * Bump to v0.51.0
+  * refresh patches
+  * Add distro patch to avoid sigstore dependencies
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sat, 04 Feb 2023 11:29:46 -0500
+
 golang-github-containers-common (0.50.1+ds1-3) unstable; urgency=medium
 
   * Team upload

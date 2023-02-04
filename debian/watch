@@ -1,10 +1,8 @@
-# https://salsa.debian.org/snippets/95
-# uscan(1) configuration file.
 version=4
 
 opts="\
 pgpmode=none,\
 repack,compression=xz,repacksuffix=+ds1,\
-dversionmangle=s{[+~]ds\d*}{},\
-" https://github.com/containers/common/releases \
-  .*/archive/refs/tags/v?(\d[\d\.]+)\.tar\.gz
+dversionmangle=auto,\
+" https://github.com/containers/common/tags \
+  .*/v?@ANY_VERSION@\.tar\.gz

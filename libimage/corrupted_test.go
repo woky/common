@@ -2,7 +2,6 @@ package libimage
 
 import (
 	"context"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -41,14 +40,14 @@ func TestCorruptedLayers(t *testing.T) {
 	require.True(t, exists, "healthy image exists")
 
 	// Disk usage works.
-	_, err = runtime.DiskUsage(ctx)
+	_, _, err = runtime.DiskUsage(ctx)
 	require.NoError(t, err, "disk usage works on healthy image")
 
 	// Now remove one layer from the layers.json index in the storage.  The
 	// image will still be listed in the container storage but attempting
 	// to use it will yield "layer not known" errors.
 	indexPath := filepath.Join(runtime.store.GraphRoot(), "vfs-layers/layers.json")
-	data, err := ioutil.ReadFile(indexPath)
+	data, err := os.ReadFile(indexPath)
 	require.NoError(t, err, "loading layers.json")
 	layers := []*storage.Layer{}
 	err = json.Unmarshal(data, &layers)
@@ -76,7 +75,7 @@ func TestCorruptedLayers(t *testing.T) {
 	require.False(t, exists, "corrupted image should not be marked to exist")
 
 	// Disk usage does not work.
-	_, err = runtime.DiskUsage(ctx)
+	_, _, err = runtime.DiskUsage(ctx)
 	require.Error(t, err, "disk usage does not work on corrupted image")
 	require.Contains(t, err.Error(), "exists in local storage but may be corrupted", "disk usage reports corrupted image")
 

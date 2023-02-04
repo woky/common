@@ -6,11 +6,11 @@ Date:   Sun May 15 21:14:30 2022 -0400
     
     This reverts commit ed3dce6bfc79de229dd4ba2d2e76982d582d22ed.
 
-diff --git a/libimage/import.go b/libimage/import.go
-index 3db39278..7776db3a 100644
---- a/libimage/import.go
-+++ b/libimage/import.go
-@@ -58,7 +58,6 @@ func (r *Runtime) Import(ctx context.Context, path string, options *ImportOption
+Index: golang-github-containers-common/libimage/import.go
+===================================================================
+--- golang-github-containers-common.orig/libimage/import.go
++++ golang-github-containers-common/libimage/import.go
+@@ -58,7 +58,6 @@ func (r *Runtime) Import(ctx context.Con
  		History:      history,
  		OS:           options.OS,
  		Architecture: options.Arch,

@@ -3,9 +3,11 @@ Description: Revert upstream commit 5459f097a
 
 This is to avoid an unlreased copy opencontainers/image-spec
 
---- a/libimage/manifests/manifests.go
-+++ b/libimage/manifests/manifests.go
-@@ -365,12 +365,9 @@
+Index: golang-github-containers-common/libimage/manifests/manifests.go
+===================================================================
+--- golang-github-containers-common.orig/libimage/manifests/manifests.go
++++ golang-github-containers-common/libimage/manifests/manifests.go
+@@ -375,12 +375,9 @@ func (l *list) Add(ctx context.Context,
  			}
  			if instanceInfo.OS == "" {
  				instanceInfo.OS = config.OS

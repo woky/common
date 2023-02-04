@@ -61,7 +61,7 @@ validate: build/golangci-lint
 	./tools/validate_seccomp.sh ./pkg/seccomp
 
 vendor-in-container:
-	podman run --privileged --rm --env HOME=/root -v `pwd`:/src -w /src golang make vendor
+	podman run --privileged --rm --env HOME=/root -v `pwd`:/src -w /src golang:1.17 make vendor
 
 .PHONY: vendor
 vendor:
@@ -72,7 +72,7 @@ vendor:
 .PHONY: install.tools
 install.tools: build/golangci-lint .install.md2man
 
-build/golangci-lint: VERSION=v1.45.2
+build/golangci-lint: VERSION=v1.50.0
 build/golangci-lint:
 	curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/$(VERSION)/install.sh | sh -s -- -b ./build $(VERSION)
 
