@@ -51,6 +51,13 @@ ifneq ($(shell uname -s), Darwin)
 	GOARCH=386 $(GO_BUILD) -tags $(BUILDTAGS) ./...
 endif
 
+.PHONY: bin/netavark-testplugin
+bin/netavark-testplugin:
+	$(GO_BUILD) -o $@ ./libnetwork/netavark/testplugin/
+
+.PHONY: netavark-testplugin
+netavark-testplugin: bin/netavark-testplugin
+
 .PHONY: docs
 docs:
 	$(MAKE) -C docs
@@ -61,11 +68,11 @@ validate: build/golangci-lint
 	./tools/validate_seccomp.sh ./pkg/seccomp
 
 vendor-in-container:
-	podman run --privileged --rm --env HOME=/root -v `pwd`:/src -w /src golang:1.17 make vendor
+	podman run --privileged --rm --env HOME=/root -v `pwd`:/src -w /src golang make vendor
 
 .PHONY: vendor
 vendor:
-	$(GO) mod tidy -compat=1.17
+	$(GO) mod tidy
 	$(GO) mod vendor
 	$(GO) mod verify
 
@@ -90,7 +97,7 @@ install:
 test: test-unit
 
 .PHONY: test-unit
-test-unit:
+test-unit: netavark-testplugin
 	go test --tags $(BUILDTAGS) -v ./libimage
 	go test --tags $(BUILDTAGS) -v ./libnetwork/...
 	go test --tags $(BUILDTAGS) -v ./pkg/...
@@ -98,7 +105,7 @@ test-unit:
 
 .PHONY: codespell
 codespell:
-	codespell -w
+	codespell -L ro,hastable,shouldnot -w
 
 clean: ## Clean artifacts
 	$(MAKE) -C docs clean

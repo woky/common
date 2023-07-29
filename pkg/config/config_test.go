@@ -37,6 +37,11 @@ var _ = Describe("Config", func() {
 			gomega.Expect(defaultConfig.Engine.ImageVolumeMode).To(gomega.BeEquivalentTo("bind"))
 			gomega.Expect(defaultConfig.Engine.SSHConfig).To(gomega.ContainSubstring("/.ssh/config"))
 			gomega.Expect(defaultConfig.Engine.EventsContainerCreateInspectData).To(gomega.BeFalse())
+			gomega.Expect(defaultConfig.Engine.DBBackend).To(gomega.BeEquivalentTo(stringBoltDB))
+
+			dbBackend, err := defaultConfig.DBBackend()
+			gomega.Expect(dbBackend).To(gomega.BeEquivalentTo(DBBackendBoltDB))
+			gomega.Expect(err).To(gomega.BeNil())
 			path, err := defaultConfig.ImageCopyTmpDir()
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(path).To(gomega.BeEquivalentTo("/var/tmp"))
@@ -252,6 +257,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(defaultConfig.Containers.Env).To(gomega.BeEquivalentTo(envs))
 			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(defaultConfig.Network.CNIPluginDirs).To(gomega.Equal(pluginDirs))
+			gomega.Expect(defaultConfig.Network.NetavarkPluginDirs).To(gomega.Equal([]string{"/usr/netavark"}))
 			gomega.Expect(defaultConfig.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(defaultConfig.Engine.OCIRuntimes).To(gomega.Equal(OCIRuntimeMap))
 			gomega.Expect(defaultConfig.Engine.PlatformToOCIRuntime).To(gomega.Equal(PlatformToOCIRuntimeMap))
@@ -356,6 +362,20 @@ image_copy_tmp_dir="storage"`
 				},
 			}
 
+			defCaps := []string{
+				"CAP_CHOWN",
+				"CAP_DAC_OVERRIDE",
+				"CAP_FOWNER",
+				"CAP_FSETID",
+				"CAP_KILL",
+				"CAP_NET_BIND_SERVICE",
+				"CAP_SETFCAP",
+				"CAP_SETGID",
+				"CAP_SETPCAP",
+				"CAP_SETUID",
+				"CAP_SYS_CHROOT",
+			}
+
 			envs := []string{
 				"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
 				"TERM=xterm",
@@ -379,8 +399,14 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(config.Containers.Env).To(gomega.BeEquivalentTo(envs))
 			gomega.Expect(config.Containers.UserNS).To(gomega.BeEquivalentTo(""))
 			gomega.Expect(config.Network.CNIPluginDirs).To(gomega.Equal(DefaultCNIPluginDirs))
+			gomega.Expect(config.Network.NetavarkPluginDirs).To(gomega.Equal(DefaultNetavarkPluginDirs))
 			gomega.Expect(config.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(config.Engine.OCIRuntimes["runc"]).To(gomega.Equal(OCIRuntimeMap["runc"]))
+			gomega.Expect(config.Containers.CgroupConf).To(gomega.BeNil())
+
+			caps, _ := config.Capabilities("", nil, nil)
+			gomega.Expect(caps).Should(gomega.Equal(defCaps))
+
 			if useSystemd() {
 				gomega.Expect(config.Engine.CgroupManager).To(gomega.BeEquivalentTo("systemd"))
 			} else {
@@ -396,6 +422,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(config.Engine.EventsLogFilePath).To(gomega.BeEquivalentTo(""))
 			gomega.Expect(uint64(config.Engine.EventsLogFileMaxSize)).To(gomega.Equal(DefaultEventsLogSizeMax))
 			gomega.Expect(config.Engine.PodExitPolicy).To(gomega.Equal(PodExitPolicyContinue))
+			gomega.Expect(config.Engine.KubeGenerateType).To(gomega.Equal("pod"))
 		})
 
 		It("should success with valid user file path", func() {
@@ -403,6 +430,9 @@ image_copy_tmp_dir="storage"`
 			// When
 			config, err := NewConfig("testdata/containers_default.conf")
 			// Then
+			cgroupConf := []string{
+				"memory.high=1073741824",
+			}
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal("container-default"))
 			gomega.Expect(config.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
@@ -410,6 +440,14 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(config.Containers.HostContainersInternalIP).To(gomega.BeEquivalentTo("1.2.3.4"))
 			gomega.Expect(config.Engine.ImageVolumeMode).To(gomega.BeEquivalentTo("tmpfs"))
 			gomega.Expect(config.Engine.SSHConfig).To(gomega.Equal("/foo/bar/.ssh/config"))
+
+			gomega.Expect(config.Engine.DBBackend).To(gomega.Equal(stringSQLite))
+			dbBackend, err := config.DBBackend()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(dbBackend).To(gomega.BeEquivalentTo(DBBackendSQLite))
+			gomega.Expect(config.Containers.CgroupConf).To(gomega.Equal(cgroupConf))
+			gomega.Expect(*config.Containers.OOMScoreAdj).To(gomega.Equal(int(750)))
+			gomega.Expect(config.Engine.KubeGenerateType).To(gomega.Equal("pod"))
 		})
 
 		It("contents of passed-in file should override others", func() {
@@ -550,6 +588,12 @@ image_copy_tmp_dir="storage"`
 
 		It("should fail with invalid pull_policy", func() {
 			sut.Engine.PullPolicy = "invalidPullPolicy"
+			err := sut.Engine.Validate()
+			gomega.Expect(err).ToNot(gomega.BeNil())
+		})
+
+		It("should fail with invalid database_backend", func() {
+			sut.Engine.DBBackend = ""
 			err := sut.Engine.Validate()
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
@@ -872,5 +916,21 @@ env=["foo=bar"]`
 		}
 		err := ValidateImageVolumeMode("bogus")
 		gomega.Expect(err).To(gomega.HaveOccurred())
+	})
+
+	It("CONTAINERS_CONF_OVERRIDE", func() {
+		os.Setenv("CONTAINERS_CONF_OVERRIDE", "testdata/containers_override.conf")
+		defer os.Unsetenv("CONTAINERS_CONF_OVERRIDE")
+		config, err := NewConfig("")
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal("overridden-default"))
+
+		// Make sure that _OVERRIDE is loaded even when CONTAINERS_CONF is set.
+		os.Setenv("CONTAINERS_CONF", "testdata/containers_default.conf")
+		defer os.Unsetenv("CONTAINERS_CONF")
+		config, err = NewConfig("")
+		gomega.Expect(err).ToNot(gomega.HaveOccurred())
+		gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal("overridden-default"))
+		gomega.Expect(config.Containers.BaseHostsFile).To(gomega.Equal("/etc/hosts2"))
 	})
 })
