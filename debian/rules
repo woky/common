@@ -6,6 +6,9 @@ export DH_GOLANG_INSTALL_ALL := 1
 # disable LTO, cf. https://wiki.debian.org/ToolChain/LTO
 export DEB_BUILD_MAINT_OPTIONS := optimize=-lto
 
+# avoid installing test utilities
+export DH_GOLANG_EXCLUDES := netavark/testplugin
+
 BUILDTAGS := containers_image_openpgp,systemd
 
 %:
