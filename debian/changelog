@@ -1,3 +1,9 @@
+golang-github-containers-common (0.52.0+ds1-2) unstable; urgency=medium
+
+  * Upload to unstable
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sat, 09 Sep 2023 16:28:53 -0400
+
 golang-github-containers-common (0.52.0+ds1-1) experimental; urgency=medium
 
   * New upstream relesae
@@ -15,6 +21,12 @@ golang-github-containers-common (0.51.0+ds1-1) experimental; urgency=medium
   * Add distro patch to avoid sigstore dependencies
 
  -- Reinhard Tartler <siretart@tauware.de>  Sat, 04 Feb 2023 11:29:46 -0500
+
+golang-github-containers-common (0.50.1+ds1-4) unstable; urgency=medium
+
+  * Tighten dependency on containers/image-spec and avoid distro patches
+
+ -- Reinhard Tartler <siretart@tauware.de>  Sun, 05 Feb 2023 09:55:56 -0500
 
 golang-github-containers-common (0.50.1+ds1-3) unstable; urgency=medium
 
