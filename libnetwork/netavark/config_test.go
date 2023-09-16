@@ -1102,6 +1102,68 @@ var _ = Describe("Config", func() {
 			Expect(network1.IPAMOptions).To(HaveKeyWithValue("driver", "host-local"))
 		})
 
+		It("create macvlan config with bclim", func() {
+			subnet := "10.1.0.0/24"
+			n, _ := types.ParseCIDR(subnet)
+			network := types.Network{
+				Driver: "macvlan",
+				Subnets: []types.Subnet{
+					{Subnet: n},
+				},
+				Options: map[string]string{
+					types.BclimOption: "-1",
+				},
+			}
+			network1, err := libpodNet.NetworkCreate(network, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(network1.Name).ToNot(BeEmpty())
+			Expect(network1.Options).To(HaveKeyWithValue("bclim", "-1"))
+
+			network = types.Network{
+				Driver: "macvlan",
+				Subnets: []types.Subnet{
+					{Subnet: n},
+				},
+				Options: map[string]string{
+					types.BclimOption: "1000",
+				},
+			}
+			network1, err = libpodNet.NetworkCreate(network, nil)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(network1.Name).ToNot(BeEmpty())
+			Expect(network1.Options).To(HaveKeyWithValue("bclim", "1000"))
+
+			network = types.Network{
+				Driver: "macvlan",
+				Subnets: []types.Subnet{
+					{Subnet: n},
+				},
+				Options: map[string]string{
+					types.BclimOption: "abc",
+				},
+			}
+			_, err = libpodNet.NetworkCreate(network, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("failed to parse \"bclim\" option: strconv.ParseInt: parsing \"abc\": invalid syntax"))
+		})
+
+		It("create ipvlan config with bclim should fail", func() {
+			subnet := "10.1.0.0/24"
+			n, _ := types.ParseCIDR(subnet)
+			network := types.Network{
+				Driver: "ipvlan",
+				Subnets: []types.Subnet{
+					{Subnet: n},
+				},
+				Options: map[string]string{
+					types.BclimOption: "-1",
+				},
+			}
+			_, err := libpodNet.NetworkCreate(network, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("unsupported ipvlan network option bclim"))
+		})
+
 		It("create macvlan config with mode", func() {
 			subnet := "10.1.0.0/24"
 			n, _ := types.ParseCIDR(subnet)
@@ -1327,7 +1389,7 @@ var _ = Describe("Config", func() {
 			Expect(err.Error()).To(Equal("unknown ipvlan mode \"abc\""))
 		})
 
-		It("create network with isolate option", func() {
+		It("create network with isolate option 'true'", func() {
 			for _, val := range []string{"true", "1"} {
 				network := types.Network{
 					Options: map[string]string{
@@ -1345,6 +1407,22 @@ var _ = Describe("Config", func() {
 			}
 		})
 
+		It("create network with isolate option 'strict'", func() {
+			network := types.Network{
+				Options: map[string]string{
+					types.IsolateOption: "strict",
+				},
+			}
+			network1, err := libpodNet.NetworkCreate(network, nil)
+			Expect(err).To(BeNil())
+			Expect(network1.Driver).To(Equal("bridge"))
+			Expect(network1.Options).ToNot(BeNil())
+			path := filepath.Join(networkConfDir, network1.Name+".json")
+			Expect(path).To(BeARegularFile())
+			grepInFile(path, `"isolate": "strict"`)
+			Expect(network1.Options).To(HaveKeyWithValue("isolate", "strict"))
+		})
+
 		It("create network with invalid isolate option", func() {
 			network := types.Network{
 				Options: map[string]string{
@@ -1354,6 +1432,375 @@ var _ = Describe("Config", func() {
 			_, err := libpodNet.NetworkCreate(network, nil)
 			Expect(err).To(HaveOccurred())
 		})
+	})
+
+	It("create bridge config with static route", func() {
+		dest := "10.1.0.0/24"
+		gw := "10.1.0.1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "bridge",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		network1, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(BeNil())
+		Expect(network1.Name).ToNot(BeEmpty())
+		Expect(network1.Routes).To(HaveLen(1))
+		Expect(network1.Routes[0].Destination.String()).To(Equal(dest))
+		Expect(network1.Routes[0].Gateway.String()).To(Equal(gw))
+	})
+
+	It("create macvlan config with static route", func() {
+		dest := "10.1.0.0/24"
+		gw := "10.1.0.1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "macvlan",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		network1, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(BeNil())
+		Expect(network1.Name).ToNot(BeEmpty())
+		Expect(network1.Routes).To(HaveLen(1))
+		Expect(network1.Routes[0].Destination.String()).To(Equal(dest))
+		Expect(network1.Routes[0].Gateway.String()).To(Equal(gw))
+	})
+
+	It("create ipvlan config with static route", func() {
+		subnet := "10.1.0.0/24"
+		n, _ := types.ParseCIDR(subnet)
+		dest := "10.1.0.0/24"
+		gw := "10.1.0.1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "ipvlan",
+			Subnets: []types.Subnet{
+				{Subnet: n},
+			},
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+
+		network1, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(BeNil())
+		Expect(network1.Name).ToNot(BeEmpty())
+		Expect(network1.Routes).To(HaveLen(1))
+		Expect(network1.Routes[0].Destination.String()).To(Equal(dest))
+		Expect(network1.Routes[0].Gateway.String()).To(Equal(gw))
+	})
+
+	It("create bridge config with static route (ipv6)", func() {
+		dest := "fd:1234::/64"
+		gw := "fd:4321::1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "bridge",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		network1, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(BeNil())
+		Expect(network1.Name).ToNot(BeEmpty())
+		Expect(network1.Routes).To(HaveLen(1))
+		Expect(network1.Routes[0].Destination.String()).To(Equal(dest))
+		Expect(network1.Routes[0].Gateway.String()).To(Equal(gw))
+	})
+
+	It("create macvlan config with static route (ipv6)", func() {
+		dest := "fd:1234::/64"
+		gw := "fd:4321::1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "macvlan",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		network1, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(BeNil())
+		Expect(network1.Name).ToNot(BeEmpty())
+		Expect(network1.Routes).To(HaveLen(1))
+		Expect(network1.Routes[0].Destination.String()).To(Equal(dest))
+		Expect(network1.Routes[0].Gateway.String()).To(Equal(gw))
+	})
+
+	It("create ipvlan config with static route (ipv6)", func() {
+		subnet := "fd:4321::/64"
+		n, _ := types.ParseCIDR(subnet)
+		dest := "fd:1234::/64"
+		gw := "fd:4321::1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "ipvlan",
+			Subnets: []types.Subnet{
+				{Subnet: n},
+			},
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		network1, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(BeNil())
+		Expect(network1.Name).ToNot(BeEmpty())
+		Expect(network1.Routes).To(HaveLen(1))
+		Expect(network1.Routes[0].Destination.String()).To(Equal(dest))
+		Expect(network1.Routes[0].Gateway.String()).To(Equal(gw))
+	})
+
+	It("create bridge config with invalid static route (destination is address)", func() {
+		dest := "10.0.11.10/24"
+		gw := "10.1.0.1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "bridge",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("route destination invalid"))
+	})
+
+	It("create macvlan config with invalid static route (destination is address)", func() {
+		dest := "10.0.11.10/24"
+		gw := "10.1.0.1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "macvlan",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("route destination invalid"))
+	})
+
+	It("create ipvlan config with invalid static route (destination is address)", func() {
+		subnet := "10.1.0.0/24"
+		n, _ := types.ParseCIDR(subnet)
+		dest := "10.0.11.10/24"
+		gw := "10.1.0.1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "ipvlan",
+			Subnets: []types.Subnet{
+				{Subnet: n},
+			},
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("route destination invalid"))
+	})
+
+	It("create bridge config with invalid static route (dest = \"foo\")", func() {
+		dest := "foo"
+		gw := "10.1.0.1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "bridge",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("route destination ip nil"))
+	})
+
+	It("create macvlan config with invalid static route (dest = \"foo\")", func() {
+		dest := "foo"
+		gw := "10.1.0.1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "macvlan",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("route destination ip nil"))
+	})
+
+	It("create ipvlan config with invalid static route (dest = \"foo\")", func() {
+		subnet := "10.1.0.0/24"
+		n, _ := types.ParseCIDR(subnet)
+		dest := "foo"
+		gw := "10.1.0.1"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "ipvlan",
+			Subnets: []types.Subnet{
+				{Subnet: n},
+			},
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("route destination ip nil"))
+	})
+
+	It("create bridge config with invalid static route (gw = \"foo\")", func() {
+		dest := "10.1.0.0/24"
+		gw := "foo"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "bridge",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("route gateway nil"))
+	})
+
+	It("create macvlan config with invalid static route (gw = \"foo\")", func() {
+		dest := "10.1.0.0/24"
+		gw := "foo"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "macvlan",
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("route gateway nil"))
+	})
+
+	It("create ipvlan config with invalid static route (gw = \"foo\")", func() {
+		subnet := "10.1.0.0/24"
+		n, _ := types.ParseCIDR(subnet)
+		dest := "10.1.0.0/24"
+		gw := "foo"
+		d, _ := types.ParseCIDR(dest)
+		g := net.ParseIP(gw)
+		network := types.Network{
+			Driver: "ipvlan",
+			Subnets: []types.Subnet{
+				{Subnet: n},
+			},
+			Routes: []types.Route{
+				{Destination: d, Gateway: g},
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("route gateway nil"))
+	})
+
+	It("create bridge config with no_default_route", func() {
+		network := types.Network{
+			Driver: "bridge",
+			Options: map[string]string{
+				"no_default_route": "1",
+			},
+		}
+		network1, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(BeNil())
+		Expect(network1.Options).To(HaveLen(1))
+		Expect(network1.Options["no_default_route"]).To(Equal("true"))
+	})
+
+	It("create macvlan config with no_default_route", func() {
+		network := types.Network{
+			Driver: "macvlan",
+			Options: map[string]string{
+				"no_default_route": "1",
+			},
+		}
+		network1, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(BeNil())
+		Expect(network1.Options).To(HaveLen(1))
+		Expect(network1.Options["no_default_route"]).To(Equal("true"))
+	})
+
+	It("create ipvlan config with no_default_route", func() {
+		subnet := "10.1.0.0/24"
+		n, _ := types.ParseCIDR(subnet)
+		network := types.Network{
+			Driver: "ipvlan",
+			Subnets: []types.Subnet{
+				{Subnet: n},
+			},
+			Options: map[string]string{
+				"no_default_route": "1",
+			},
+		}
+		network1, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(BeNil())
+		Expect(network1.Options).To(HaveLen(1))
+		Expect(network1.Options["no_default_route"]).To(Equal("true"))
+	})
+
+	It("create bridge config with invalid no_default_route", func() {
+		network := types.Network{
+			Driver: "bridge",
+			Options: map[string]string{
+				"no_default_route": "foo",
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("parsing \"foo\": invalid syntax"))
+	})
+
+	It("create macvlan config with invalid no_default_route", func() {
+		network := types.Network{
+			Driver: "macvlan",
+			Options: map[string]string{
+				"no_default_route": "foo",
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("parsing \"foo\": invalid syntax"))
+	})
+
+	It("create ipvlan config with invalid no_default_route", func() {
+		subnet := "10.1.0.0/24"
+		n, _ := types.ParseCIDR(subnet)
+		network := types.Network{
+			Driver: "ipvlan",
+			Subnets: []types.Subnet{
+				{Subnet: n},
+			},
+			Options: map[string]string{
+				"no_default_route": "foo",
+			},
+		}
+		_, err := libpodNet.NetworkCreate(network, nil)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("parsing \"foo\": invalid syntax"))
 	})
 
 	Context("network load valid existing ones", func() {
@@ -1541,9 +1988,9 @@ var _ = Describe("Config", func() {
 			Expect(networks).To(ConsistOf(HaveNetworkName("internal"), HaveNetworkName("bridge")))
 		})
 
-		It("network list with filters (id)", func() {
+		It("network list with filters (id with regex)", func() {
 			filters := map[string][]string{
-				"id": {"3bed2cb3a3acf7b6a8ef408420cc682d5520e26976d354254f528c965612054f", "17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121"},
+				"id": {"3bed2cb3a3acf7b6a8ef40.*", "17f29b073143d8cd97b5bbe492bdeffec1c5fee55cc1fe2112c8b9335f8b6121"},
 			}
 			filterFuncs, err := util.GenerateNetworkFilters(filters)
 			Expect(err).To(BeNil())

@@ -44,7 +44,7 @@ func TestAddSecretAndLookupData(t *testing.T) {
 		Labels:     labels,
 	}
 
-	_, err = manager.Store("mysecret", []byte("mydata"), drivertype, storeOpts)
+	id1, err := manager.Store("mysecret", []byte("mydata"), drivertype, storeOpts)
 	require.NoError(t, err)
 
 	_, err = manager.lookupSecret("mysecret")
@@ -63,6 +63,25 @@ func TestAddSecretAndLookupData(t *testing.T) {
 	}
 	if len(s.Labels) != 2 {
 		t.Errorf("error: incorrect number of labels")
+	}
+	if s.CreatedAt != s.UpdatedAt {
+		t.Errorf("error: secret CreatedAt should equal UpdatedAt when first created")
+	}
+
+	_, err = manager.Store("mysecret", []byte("mydata"), drivertype, storeOpts)
+	require.Error(t, err)
+
+	storeOpts.Replace = true
+	id2, err := manager.Store("mysecret", []byte("mydata"), drivertype, storeOpts)
+	require.NoError(t, err)
+	if id1 == id2 {
+		t.Errorf("error: secret id after Replace should be different")
+	}
+
+	s, _, err = manager.LookupSecretData("mysecret")
+	require.NoError(t, err)
+	if s.CreatedAt == s.UpdatedAt {
+		t.Errorf("error: secret CreatedAt should not equal UpdatedAt after a Replace")
 	}
 }
 
@@ -86,7 +105,7 @@ func TestAddSecretName(t *testing.T) {
 	_, err = manager.Store("", []byte("mydata"), drivertype, storeOpts)
 	require.Error(t, err)
 	// name too long
-	_, err = manager.Store("uatqsbssrapurkuqoapubpifvsrissslzjehalxcesbhpxcvhsozlptrmngrivaiz", []byte("mydata"), drivertype, storeOpts)
+	_, err = manager.Store("uatqsbssrapurkuqoapubpifvsrissslzjehalxcesbhpxcvhsozlptrmngrivaizuatqsbssrapurkuqoapubpifvsrissslzjehalxcesbhpxcvhsozlptrmngrivaizuatqsbssrapurkuqoapubpifvsrissslzjehalxcesbhpxcvhsozlptrmngrivaizuatqsbssrapurkuqoapubpifvsrissslzjehalxcesbhpxcvhsozlptrabd", []byte("mydata"), drivertype, storeOpts)
 	require.Error(t, err)
 	// invalid chars
 	_, err = manager.Store("??", []byte("mydata"), drivertype, storeOpts)

@@ -62,7 +62,7 @@ Index: golang-github-containers-common/libimage/manifest_list.go
 ===================================================================
 --- golang-github-containers-common.orig/libimage/manifest_list.go
 +++ golang-github-containers-common/libimage/manifest_list.go
-@@ -452,7 +452,7 @@ func (m *ManifestList) Push(ctx context.
+@@ -451,7 +451,7 @@ func (m *ManifestList) Push(ctx context.
  		ImageListSelection:               options.ImageListSelection,
  		Instances:                        options.Instances,
  		ReportWriter:                     options.Writer,
