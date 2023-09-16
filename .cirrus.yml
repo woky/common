@@ -18,8 +18,8 @@ env:
     ####
     #### image names to test with (double-quotes around names are critical)
     ####
-    FEDORA_NAME: "fedora-37"
-    IMAGE_SUFFIX: "c20230405t152256z-f37f36d12"
+    FEDORA_NAME: "fedora-38"
+    IMAGE_SUFFIX: "c20230614t132754z-f38f37d13"
     FEDORA_CACHE_IMAGE_NAME: "fedora-${IMAGE_SUFFIX}"
     FEDORA_CONTAINER_FQIN: "quay.io/libpod/fedora_podman:${IMAGE_SUFFIX}"
 
@@ -47,8 +47,7 @@ testing_task:
   env:
     NETAVARK_BINARY: "/usr/libexec/podman/netavark"
   test_script:
-    # TODO: Remove '|| dnf install' part once package is included in VM image
-    - dnf install -y /var/cache/download/podman-plugins*.rpm || dnf install -y podman-plugins
+    - dnf install -y /var/cache/download/podman-plugins*.rpm
     - mkdir "$GOLANGCI_LINT_CACHE"
     - export PATH="$PATH:$GOPATH/bin"
     - gpg --batch --passphrase '' --quick-gen-key tester@localhost default default never

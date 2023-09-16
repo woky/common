@@ -2,8 +2,10 @@ package config
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -31,10 +33,16 @@ var _ = Describe("Config", func() {
 			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(defaultConfig.Containers.ReadOnly).To(gomega.BeFalse())
 			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(5))
+			gomega.Expect(defaultConfig.Engine.CompressionFormat).To(gomega.BeEquivalentTo("gzip"))
+			gomega.Expect(defaultConfig.Engine.CompressionLevel).To(gomega.BeNil())
 			gomega.Expect(defaultConfig.NetNS()).To(gomega.BeEquivalentTo("private"))
 			gomega.Expect(defaultConfig.IPCNS()).To(gomega.BeEquivalentTo("shareable"))
 			gomega.Expect(defaultConfig.Engine.InfraImage).To(gomega.BeEquivalentTo(""))
-			gomega.Expect(defaultConfig.Engine.ImageVolumeMode).To(gomega.BeEquivalentTo("bind"))
+			if runtime.GOOS == "freebsd" {
+				gomega.Expect(defaultConfig.Engine.ImageVolumeMode).To(gomega.BeEquivalentTo("nullfs"))
+			} else {
+				gomega.Expect(defaultConfig.Engine.ImageVolumeMode).To(gomega.BeEquivalentTo("bind"))
+			}
 			gomega.Expect(defaultConfig.Engine.SSHConfig).To(gomega.ContainSubstring("/.ssh/config"))
 			gomega.Expect(defaultConfig.Engine.EventsContainerCreateInspectData).To(gomega.BeFalse())
 			gomega.Expect(defaultConfig.Engine.DBBackend).To(gomega.BeEquivalentTo(stringBoltDB))
@@ -109,6 +117,7 @@ var _ = Describe("Config", func() {
 			defaultConfig, _ := NewConfig("")
 			// EnableLabeling should match whether or not SELinux is enabled on the host
 			gomega.Expect(defaultConfig.Containers.EnableLabeling).To(gomega.Equal(selinux.GetEnabled()))
+			gomega.Expect(defaultConfig.Containers.EnableLabeledUsers).To(gomega.BeFalse())
 		})
 	})
 
@@ -486,6 +495,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(config.Engine.ImageParallelCopies).To(gomega.Equal(uint(10)))
 			gomega.Expect(config.Engine.PlatformToOCIRuntime).To(gomega.Equal(PlatformToOCIRuntimeMap))
 			gomega.Expect(config.Engine.ImageDefaultFormat).To(gomega.Equal("v2s2"))
+			gomega.Expect(config.Engine.CompressionFormat).To(gomega.BeEquivalentTo("zstd:chunked"))
 			gomega.Expect(config.Engine.EventsLogFilePath).To(gomega.BeEquivalentTo("/tmp/events.log"))
 			gomega.Expect(config.Engine.EventsContainerCreateInspectData).To(gomega.BeTrue())
 			path, err := config.ImageCopyTmpDir()
@@ -506,6 +516,9 @@ image_copy_tmp_dir="storage"`
 
 		It("Test Capabilities call", func() {
 			// Given
+			if runtime.GOOS != "linux" {
+				Skip(fmt.Sprintf("capabilities not supported on %s", runtime.GOOS))
+			}
 			// When
 			config, err := NewConfig("")
 			// Then
@@ -932,5 +945,6 @@ env=["foo=bar"]`
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal("overridden-default"))
 		gomega.Expect(config.Containers.BaseHostsFile).To(gomega.Equal("/etc/hosts2"))
+		gomega.Expect(config.Containers.EnableLabeledUsers).To(gomega.BeTrue())
 	})
 })

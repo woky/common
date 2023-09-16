@@ -111,8 +111,7 @@ default_capabilities = [
 ```
 
 Note, by default container engines using containers.conf, run with less
-capabilities than Docker. Docker runs additionally with "AUDIT_WRITE", "MKNOD",
-"NET_RAW", "CHROOT". If you need to add one of these capabilities for a
+capabilities than Docker. Docker runs additionally with "AUDIT_WRITE", "MKNOD" and "NET_RAW". If you need to add one of these capabilities for a
 particular container, you can use the --cap-add option or edit your system's containers.conf.
 
 **default_sysctls**=[]
@@ -207,6 +206,13 @@ the container.
 **label**=true
 
 Indicates whether the container engine uses MAC(SELinux) container separation via labeling. This option is ignored on disabled systems.
+
+**label_users**=false
+
+label_users indicates whether to enforce confined users in containers on
+SELinux systems. This option causes containers to maintain the current user
+and role field of the calling process. By default SELinux containers run with
+the user system_u, and the role system_r.
 
 **log_driver**=""
 
@@ -379,6 +385,11 @@ default_subnet_pools = [
 ]
 ```
 
+**default_rootless_network_cmd**="slirp4netns"
+
+Configure which rootless network program to use by default. Valid options are
+`slirp4netns` (default) and `pasta`.
+
 **network_config_dir**="/etc/cni/net.d/"
 
 Path to the directory where network configuration files are located.
@@ -393,6 +404,11 @@ Port to use for dns forwarding daemon with netavark in rootful bridge
 mode and dns enabled.
 Using an alternate port might be useful if other dns services should
 run on the machine.
+
+**pasta_options** = []
+
+A list of default pasta options that should be used running pasta.
+It accepts the pasta cli options, see pasta(1) for the full list of options.
 
 ## ENGINE TABLE
 The `engine` table contains configuration options used to set up container engines such as Podman and Buildah.
@@ -430,6 +446,12 @@ conmon_path=[
 ]
 ```
 
+**database_backend**="boltdb"
+
+The database backend of Podman.  Supported values are "boltdb" (default) and
+"sqlite". Please run `podman-system-reset` prior to changing the database
+backend of an existing deployment, to make sure Podman can operate correctly.
+
 **detach_keys**="ctrl-p,ctrl-q"
 
 Keys sequence used for detaching a container.
@@ -437,6 +459,7 @@ Specify the keys sequence used to detach a container.
 Format is a single character `[a-Z]` or a comma separated sequence of
 `ctrl-<value>`, where `<value>` is one of:
 `a-z`, `@`, `^`, `[`, `\`, `]`, `^` or `_`
+Specifying "" disables this feature.
 
 **enable_port_reservation**=true
 
@@ -696,14 +719,21 @@ not be by other drivers.
 Determines whether file copied into a container will have changed ownership to
 the primary uid/gid of the container.
 
-**compression_format**=""
+**compression_format**="gzip"
 
-Specifies the compression format to use when pushing an image. Supported values are: `gzip`, `zstd` and `zstd:chunked`.
+Specifies the compression format to use when pushing an image. Supported values are: `gzip` and `zstd`.
+
+**compression_level**="5"
+
+The compression level to use when pushing an image. Valid options
+depend on the compression format used. For gzip, valid options are
+1-9, with a default of 5. For zstd, valid options are 1-20, with a
+default of 3.
 
 ## SERVICE DESTINATION TABLE
-The `service_destinations` table contains configuration options used to set up remote connections to the podman service for the podman API.
+The `engine.service_destinations` table contains configuration options used to set up remote connections to the podman service for the podman API.
 
-**[service_destinations.{name}]**
+**[engine.service_destinations.{name}]**
 URI to access the Podman service
 **uri="ssh://user@production.example.com/run/user/1001/podman/podman.sock"**
 
