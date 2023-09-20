@@ -25,3 +25,6 @@ override_dh_auto_install:
 override_dh_auto_test:
 	DH_GOLANG_EXCLUDES="pkg/auth pkg/ssh pkg/cgroupv2 pkg/machine pkg/config pkg/cgroups libimage pkg/secrets/passdriver libnetwork/cni libnetwork/netavark" \
 	dh_auto_test
+
+execute_after_dh_clean:
+	make -C docs clean
