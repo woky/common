@@ -17,7 +17,6 @@ import (
 	"github.com/containers/image/v5/docker/reference"
 	"github.com/containers/image/v5/pkg/compression"
 	"github.com/containers/image/v5/signature"
-	"github.com/containers/image/v5/signature/signer"
 	storageTransport "github.com/containers/image/v5/storage"
 	"github.com/containers/image/v5/types"
 	encconfig "github.com/containers/ocicrypt/config"
@@ -107,7 +106,7 @@ type CopyOptions struct {
 	SignaturePolicyPath string
 	// If non-empty, asks for signatures to be added during the copy
 	// using the provided signers.
-	Signers []*signer.Signer
+	//Signers []*signer.Signer
 	// If non-empty, asks for a signature to be added during the copy, and
 	// specifies a key ID.
 	SignBy string
@@ -312,7 +311,7 @@ func (r *Runtime) newCopier(options *CopyOptions) (*copier, error) {
 	c.imageCopyOptions.OciEncryptLayers = options.OciEncryptLayers
 	c.imageCopyOptions.OciDecryptConfig = options.OciDecryptConfig
 	c.imageCopyOptions.RemoveSignatures = options.RemoveSignatures
-	c.imageCopyOptions.Signers = options.Signers
+	//c.imageCopyOptions.Signers = options.Signers
 	c.imageCopyOptions.SignBy = options.SignBy
 	c.imageCopyOptions.SignPassphrase = options.SignPassphrase
 	c.imageCopyOptions.SignBySigstorePrivateKeyFile = options.SignBySigstorePrivateKeyFile
