@@ -10,15 +10,67 @@ run:
   concurrency: 6
   deadline: 5m
 linters:
-  enable:
-    - dupl
-    - gocritic
-    - unparam
-    - exportloopref
-    - revive
-    - prealloc
-    - makezero
-    - gofumpt
+  enable-all: true
+  disable:
+    # linters deprecated by upstreams ...
+    - interfacer
+    - varcheck
+    - deadcode
+    - scopelint
+    - maligned
+    - nosnakecase
+    - exhaustivestruct
+    - structcheck
+    - ifshort
+    - golint
+    # linters explicitly disabled for the below mentioned reasons ...
+    - funlen # too aggressive/wishful size/statement limit
+    - gochecknoinits # too many hard to fix init() funcs across the code
+    - gocognit # too aggressive default
+    - wsl # useful but too opinionated
+    # others to be re-enabled one-by-one ...
+    - goconst
+    - godox
+    - lll
+    - nestif
+    - contextcheck
+    - cyclop
+    - depguard
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - exhaustivestruct
+    - ginkgolinter
+    - gochecknoglobals
+    - goerr113
+    - gomnd
+    - nolintlint
+    - wrapcheck
+    - varnamelen
+    - testpackage
+    - tenv
+    - tagliatelle
+    - stylecheck
+    - paralleltest
+    - nonamedreturns
+    - nlreturn
+    - nakedret
+    - musttag
+    - maintidx
+    - ireturn
+    - exhaustruct
+    - gosec
+    - godot
+    - gocyclo
+    - dogsled
+    - tparallel
+    - thelper
+    - nilnil
+    - nilerr
+    - interfacebloat
+    - forcetypeassert
+    - gomoddirectives
 linters-settings:
   errcheck:
     check-type-assertions: true
