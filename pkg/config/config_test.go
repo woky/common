@@ -18,8 +18,6 @@ import (
 )
 
 var _ = Describe("Config", func() {
-	BeforeEach(beforeEach)
-
 	Describe("ValidateConfig", func() {
 		It("should succeed with default config", func() {
 			// Given
@@ -46,6 +44,8 @@ var _ = Describe("Config", func() {
 			gomega.Expect(defaultConfig.Engine.SSHConfig).To(gomega.ContainSubstring("/.ssh/config"))
 			gomega.Expect(defaultConfig.Engine.EventsContainerCreateInspectData).To(gomega.BeFalse())
 			gomega.Expect(defaultConfig.Engine.DBBackend).To(gomega.BeEquivalentTo(stringBoltDB))
+			gomega.Expect(defaultConfig.Engine.PodmanshTimeout).To(gomega.BeEquivalentTo(30))
+			gomega.Expect(defaultConfig.Engine.AddCompression).To(gomega.BeNil())
 
 			dbBackend, err := defaultConfig.DBBackend()
 			gomega.Expect(dbBackend).To(gomega.BeEquivalentTo(DBBackendBoltDB))
@@ -56,8 +56,12 @@ var _ = Describe("Config", func() {
 		})
 
 		It("should succeed with devices", func() {
+			defConf, err := defaultConfig()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defConf).NotTo(gomega.BeNil())
+
 			// Given
-			sut.Containers.Devices = []string{
+			defConf.Containers.Devices = []string{
 				"/dev/null:/dev/null:rw",
 				"/dev/sdc/",
 				"/dev/sdc:/dev/xvdc",
@@ -65,49 +69,61 @@ var _ = Describe("Config", func() {
 			}
 
 			// When
-			err := sut.Containers.Validate()
+			err = defConf.Containers.Validate()
 
 			// Then
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
 		It("should fail wrong max log size", func() {
+			defConf, err := defaultConfig()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defConf).NotTo(gomega.BeNil())
+
 			// Given
-			sut.Containers.LogSizeMax = 1
+			defConf.Containers.LogSizeMax = 1
 
 			// When
-			err := sut.Validate()
+			err = defConf.Validate()
 
 			// Then
 			gomega.Expect(err).NotTo(gomega.BeNil())
 		})
 
 		It("should succeed with valid shm size", func() {
+			defConf, err := defaultConfig()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defConf).NotTo(gomega.BeNil())
+
 			// Given
-			sut.Containers.ShmSize = "1024"
+			defConf.Containers.ShmSize = "1024"
 
 			// When
-			err := sut.Validate()
+			err = defConf.Validate()
 
 			// Then
 			gomega.Expect(err).To(gomega.BeNil())
 
 			// Given
-			sut.Containers.ShmSize = "64m"
+			defConf.Containers.ShmSize = "64m"
 
 			// When
-			err = sut.Validate()
+			err = defConf.Validate()
 
 			// Then
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
 		It("should fail wrong shm size", func() {
+			defConf, err := defaultConfig()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defConf).NotTo(gomega.BeNil())
+
 			// Given
-			sut.Containers.ShmSize = "-2"
+			defConf.Containers.ShmSize = "-2"
 
 			// When
-			err := sut.Validate()
+			err = defConf.Validate()
 
 			// Then
 			gomega.Expect(err).NotTo(gomega.BeNil())
@@ -123,9 +139,13 @@ var _ = Describe("Config", func() {
 
 	Describe("ValidateNetworkConfig", func() {
 		It("should succeed with default config", func() {
+			defConf, err := defaultConfig()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defConf).NotTo(gomega.BeNil())
+
 			// Given
 			// When
-			err := sut.Network.Validate()
+			err = defConf.Network.Validate()
 
 			// Then
 			gomega.Expect(err).To(gomega.BeNil())
@@ -165,7 +185,7 @@ image_copy_tmp_dir="storage"`
 		It("should succeed with default config", func() {
 			// Given
 			// When
-			defaultConfig, _ := DefaultConfig()
+			defaultConfig, _ := defaultConfig()
 			// prior to reading local config, shows hard coded defaults
 			gomega.Expect(defaultConfig.Containers.HTTPProxy).To(gomega.Equal(true))
 
@@ -245,7 +265,11 @@ image_copy_tmp_dir="storage"`
 
 			envs := []string{
 				"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-				"TERM=xterm",
+			}
+
+			mounts := []string{
+				"type=glob,source=/tmp/test2*,ro=true",
+				"type=bind,source=/etc/services,destination=/etc/services,ro",
 			}
 
 			volumes := []string{
@@ -264,6 +288,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(defaultConfig.Engine.CgroupManager).To(gomega.Equal("systemd"))
 			gomega.Expect(defaultConfig.Containers.Env).To(gomega.BeEquivalentTo(envs))
+			gomega.Expect(defaultConfig.Containers.Mounts).To(gomega.BeEquivalentTo(mounts))
 			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(defaultConfig.Network.CNIPluginDirs).To(gomega.Equal(pluginDirs))
 			gomega.Expect(defaultConfig.Network.NetavarkPluginDirs).To(gomega.Equal([]string{"/usr/netavark"}))
@@ -276,6 +301,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(300))
 			gomega.Expect(defaultConfig.Engine.InfraImage).To(gomega.BeEquivalentTo("k8s.gcr.io/pause:3.4.1"))
 			gomega.Expect(defaultConfig.Machine.Volumes).To(gomega.BeEquivalentTo(volumes))
+			gomega.Expect(defaultConfig.Engine.PodmanshTimeout).To(gomega.BeEquivalentTo(300))
 			newV, err := defaultConfig.MachineVolumes()
 			if newVolumes[0] == ":" {
 				// $HOME is not set
@@ -289,7 +315,6 @@ image_copy_tmp_dir="storage"`
 		It("test GetDefaultEnvEx", func() {
 			envs := []string{
 				"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-				"TERM=xterm",
 			}
 			httpEnvs := append([]string{"HTTP_PROXY=1.2.3.4"}, envs...)
 			oldProxy, proxyEnvSet := os.LookupEnv("HTTP_PROXY")
@@ -297,7 +322,7 @@ image_copy_tmp_dir="storage"`
 			oldFoo, fooEnvSet := os.LookupEnv("foo")
 			os.Setenv("foo", "bar")
 
-			defaultConfig, _ := DefaultConfig()
+			defaultConfig, _ := defaultConfig()
 			gomega.Expect(defaultConfig.GetDefaultEnvEx(false, false)).To(gomega.BeEquivalentTo(envs))
 			gomega.Expect(defaultConfig.GetDefaultEnvEx(false, true)).To(gomega.BeEquivalentTo(httpEnvs))
 			gomega.Expect(strings.Join(defaultConfig.GetDefaultEnvEx(true, true), ",")).To(gomega.ContainSubstring("HTTP_PROXY"))
@@ -387,7 +412,6 @@ image_copy_tmp_dir="storage"`
 
 			envs := []string{
 				"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-				"TERM=xterm",
 			}
 
 			// Given we do
@@ -584,30 +608,46 @@ image_copy_tmp_dir="storage"`
 		})
 
 		It("should succeed with default pull_policy", func() {
-			err := sut.Engine.Validate()
+			defConf, err := defaultConfig()
 			gomega.Expect(err).To(gomega.BeNil())
-			gomega.Expect(sut.Engine.PullPolicy).To(gomega.Equal("missing"))
+			gomega.Expect(defConf).NotTo(gomega.BeNil())
 
-			sut.Engine.PullPolicy = DefaultPullPolicy
-			err = sut.Engine.Validate()
+			err = defConf.Engine.Validate()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defConf.Engine.PullPolicy).To(gomega.Equal("missing"))
+
+			defConf.Engine.PullPolicy = DefaultPullPolicy
+			err = defConf.Engine.Validate()
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
 		It("should succeed case-insensitive", func() {
-			sut.Engine.PullPolicy = "NeVer"
-			err := sut.Engine.Validate()
+			defConf, err := defaultConfig()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defConf).NotTo(gomega.BeNil())
+
+			defConf.Engine.PullPolicy = "NeVer"
+			err = defConf.Engine.Validate()
 			gomega.Expect(err).To(gomega.BeNil())
 		})
 
 		It("should fail with invalid pull_policy", func() {
-			sut.Engine.PullPolicy = "invalidPullPolicy"
-			err := sut.Engine.Validate()
+			defConf, err := defaultConfig()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defConf).NotTo(gomega.BeNil())
+
+			defConf.Engine.PullPolicy = "invalidPullPolicy"
+			err = defConf.Engine.Validate()
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 
 		It("should fail with invalid database_backend", func() {
-			sut.Engine.DBBackend = ""
-			err := sut.Engine.Validate()
+			defConf, err := defaultConfig()
+			gomega.Expect(err).To(gomega.BeNil())
+			gomega.Expect(defConf).NotTo(gomega.BeNil())
+
+			defConf.Engine.DBBackend = ""
+			err = defConf.Engine.Validate()
 			gomega.Expect(err).ToNot(gomega.BeNil())
 		})
 	})
@@ -859,6 +899,67 @@ image_copy_tmp_dir="storage"`
 		})
 	})
 
+	Describe("Farms", func() {
+		ConfPath := struct {
+			Value string
+			IsSet bool
+		}{}
+
+		BeforeEach(func() {
+			ConfPath.Value, ConfPath.IsSet = os.LookupEnv("CONTAINERS_CONF")
+			conf, _ := os.CreateTemp("", "containersconf")
+			os.Setenv("CONTAINERS_CONF", conf.Name())
+		})
+
+		AfterEach(func() {
+			os.Remove(os.Getenv("CONTAINERS_CONF"))
+			if ConfPath.IsSet {
+				os.Setenv("CONTAINERS_CONF", ConfPath.Value)
+			} else {
+				os.Unsetenv("CONTAINERS_CONF")
+			}
+		})
+
+		It("succeed to set and read", func() {
+			cfg, err := ReadCustomConfig()
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+			cfg.Engine.ActiveService = "QA"
+			cfg.Engine.ServiceDestinations = map[string]Destination{
+				"QA": {
+					URI:      "https://qa/run/podman/podman.sock",
+					Identity: "/.ssh/id_rsa",
+				},
+			}
+			err = cfg.Write()
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+			// test that connections were written correctly
+			cfg, err = ReadCustomConfig()
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+			gomega.Expect(cfg.Engine.ActiveService, "QA")
+			gomega.Expect(cfg.Engine.ServiceDestinations["QA"].URI,
+				"https://qa/run/podman/podman.sock")
+			gomega.Expect(cfg.Engine.ServiceDestinations["QA"].Identity,
+				"/.ssh/id_rsa")
+
+			// Create farm
+			cfg.Farms.Default = "Farm-1"
+			cfg.Farms.List = map[string][]string{
+				"Farm-1": {"QA"},
+			}
+			err = cfg.Write()
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+			cfg, err = ReadCustomConfig()
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+
+			gomega.Expect(cfg.Farms.Default, "Farm-1")
+			gomega.Expect(cfg.Farms.List["Farm-1"],
+				"QA")
+		})
+	})
+
 	Describe("Reload", func() {
 		It("test new config from reload", func() {
 			// Default configuration
@@ -892,7 +993,7 @@ env=["foo=bar"]`
 				os.Unsetenv("CONTAINERS_CONF")
 			}
 
-			expectOldEnv := []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "TERM=xterm"}
+			expectOldEnv := []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
 			expectNewEnv := []string{"foo=bar"}
 			gomega.Expect(cfg.Containers.Env).To(gomega.Equal(expectOldEnv))
 			gomega.Expect(newCfg.Containers.Env).To(gomega.Equal(expectNewEnv))
@@ -919,7 +1020,7 @@ env=["foo=bar"]`
 		gomega.Expect(err).ToNot(gomega.HaveOccurred())
 		// config should only contain empty stanzas
 		gomega.Expect(string(b)).To(gomega.
-			Equal("[containers]\n\n[engine]\n\n[machine]\n\n[network]\n\n[secrets]\n\n[configmaps]\n"))
+			Equal("[containers]\n\n[engine]\n\n[machine]\n\n[network]\n\n[secrets]\n\n[configmaps]\n\n[farms]\n"))
 	})
 
 	It("validate ImageVolumeMode", func() {

@@ -30,6 +30,26 @@ Note, container engines also use other configuration files for configuring the e
 container images.
 * `policy.conf` for controlling which images can be pulled to the system.
 
+## ENVIRONMENT VARIABLES
+If the `CONTAINERS_CONF` environment variable is set, all system and user
+config files are ignored and only the specified config file will be loaded.
+
+If the `CONTAINERS_CONF_OVERRIDE` path environment variable is set, the config
+file will be loaded last even when `CONTAINERS_CONF` is set.
+
+The values of both environment variables may be absolute or relative paths, for
+instance, `CONTAINERS_CONF=/tmp/my_containers.conf`.
+
+## MODULES
+A module is a containers.conf file located directly in or a sub-directory of the following three directories:
+ - __$HOME/.config/containers/containers.conf.modules__
+ - __/etc/containers/containers.conf.modules__
+ - __/usr/share/containers/containers.conf.modules__
+
+Files in those locations are not loaded by default but only on-demand.  They are loaded after all system and user configuration files but before `CONTAINERS_CONF_OVERRIDE` hence allowing for overriding system and user configs.
+
+Modules are currently supported by podman(1).  The `podman --module` flag allows for loading a module and can be specified multiple times.  If the specified value is an absolute path, the config file will be loaded directly.  Relative paths are resolved relative to the three module directories mentioned above and in the specified order such that modules in `$HOME` allow for overriding those in `/etc` and `/usr/share`.  Modules in `$HOME` (or `$XDG_CONFIG_HOME` if specified) are only used for rootless users.
+
 # FORMAT
 The [TOML format][toml] is used as the encoding of the configuration file.
 Every option is nested under its table. No bare options are used. The format of
@@ -151,7 +171,7 @@ A list of dns servers to override the DNS configuration passed to the
 container. The special value “none” can be specified to disable creation of
 /etc/resolv.conf in the container.
 
-**env**=["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "TERM=xterm"]
+**env**=["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"]
 
 Environment variable list for the container process, used for passing
 environment variables to the container.
@@ -228,6 +248,13 @@ limit is never exceeded.
 **log_tag**=""
 
 Default format tag for container log messages. This is useful for creating a specific tag for container log messages. Container log messages default to using the truncated container ID as a tag.
+
+**mounts**=[]
+
+List of mounts.
+Specified as "type=TYPE,source=<directory-on-host>,destination=<directory-in-container>,<options>"
+
+Example:  [ "type=bind,source=/var/lib/foobar,destination=/var/lib/foobar,ro", ]
 
 **netns**="private"
 
@@ -417,10 +444,38 @@ The `engine` table contains configuration options used to set up container engin
 
 Name of destination for accessing the Podman service. See SERVICE DESTINATION TABLE below.
 
+**add_compression**=[]
+
+List of compression algorithms. If set makes sure that requested compression variant
+for each platform is added to the manifest list keeping original instance intact in
+the same manifest list on every `manifest push`. Supported values are (`gzip`, `zstd` and `zstd:chunked`).
+
+Note: This is different from `compression_format` which allows users to select a default
+compression format for `push` and `manifest push`, while `add_compression` is limited to
+`manifest push` and allows users to append new instances to manifest list with specified compression
+algorithms in `add_compression` for each platform.
+
 **cgroup_manager**="systemd"
 
 The cgroup management implementation used for the runtime. Supports `cgroupfs`
 and `systemd`.
+
+**compat_api_enforce_docker_hub**=true
+
+Enforce using docker.io for completing short names in Podman's compatibility
+REST API. Note that this will ignore unqualified-search-registries and
+short-name aliases defined in containers-registries.conf(5).
+
+**compose_providers**=[]
+
+Specify one or more external providers for the compose command.  The first
+found provider is used for execution.  Can be an absolute and relative path or
+a (file) name.
+
+**compose_warning_logs**=true
+
+Emit logs on each invocation of the compose command indicating that an external
+compose provider is being executed.
 
 **conmon_env_vars**=[]
 
@@ -721,7 +776,7 @@ the primary uid/gid of the container.
 
 **compression_format**="gzip"
 
-Specifies the compression format to use when pushing an image. Supported values are: `gzip` and `zstd`.
+Specifies the compression format to use when pushing an image. Supported values are: `gzip`, `zstd` and `zstd:chunked`.
 
 **compression_level**="5"
 
@@ -729,6 +784,10 @@ The compression level to use when pushing an image. Valid options
 depend on the compression format used. For gzip, valid options are
 1-9, with a default of 5. For zstd, valid options are 1-20, with a
 default of 3.
+
+**podmansh_timeout**=30
+
+Number of seconds to wait for podmansh logins.
 
 ## SERVICE DESTINATION TABLE
 The `engine.service_destinations` table contains configuration options used to set up remote connections to the podman service for the podman API.
@@ -820,6 +879,17 @@ Virtualization provider to be used for running a podman-machine VM. Empty value
 is interpreted as the default provider for the current host OS. On Linux/Mac
 default is `QEMU` and on Windows it is `WSL`.
 
+## FARMS TABLE
+The `farms` table contains configuration options used to group up remote connections into farms that will be used when sending out builds to different machines in a farm via `podman buildfarm`.
+
+**default**=""
+
+The default farm to use when farming out builds.
+
+**[farms.list]**
+
+Map of farms created where the key is the farm name and the value is the list of system connections.
+
 # FILES
 
 **containers.conf**
@@ -831,15 +901,6 @@ configuration. They may also drop `.conf` files in
 __/etc/containers/containers.conf.d__ which will be loaded in alphanumeric order.
 Rootless users can further override fields in the config by creating a config
 file stored in the __$HOME/.config/containers/containers.conf__ file or __.conf__ files in __$HOME/.config/containers/containers.conf.d__.
-
-If the `CONTAINERS_CONF` environment variable is set, all system and user
-config files are ignored and only the specified config file will be loaded.
-
-If the `CONTAINERS_CONF_OVERRIDE` path environment variable is set, the config
-file will be loaded last even when `CONTAINERS_CONF` is set.
-
-The values of both environment variables may be absolute or relative paths, for
-instance, `CONTAINERS_CONF=/tmp/my_containers.conf`.
 
 Fields specified in a containers.conf file override the default options, as
 well as options in previously loaded containers.conf files.
