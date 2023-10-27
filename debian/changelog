@@ -1,3 +1,10 @@
+golang-github-containers-common (0.56.0+ds1-3) unstable; urgency=medium
+
+  * Upload to unstable
+  * Drop patches, no longer needed
+
+ -- Reinhard Tartler <siretart@tauware.de>  Fri, 27 Oct 2023 08:28:07 -0400
+
 golang-github-containers-common (0.56.0+ds1-2) experimental; urgency=medium
 
   * drop disable-sigstore patch
