@@ -50,6 +50,20 @@ Files in those locations are not loaded by default but only on-demand.  They are
 
 Modules are currently supported by podman(1).  The `podman --module` flag allows for loading a module and can be specified multiple times.  If the specified value is an absolute path, the config file will be loaded directly.  Relative paths are resolved relative to the three module directories mentioned above and in the specified order such that modules in `$HOME` allow for overriding those in `/etc` and `/usr/share`.  Modules in `$HOME` (or `$XDG_CONFIG_HOME` if specified) are only used for rootless users.
 
+## APPENDING TO STRING ARRAYS
+
+The default behavior during the loading sequence of multiple containers.conf files is to override previous data.  To change the behavior from overriding to appending, you can set the `append` attribute as follows: `array=["item-1", "item=2", ..., {append=true}]`.  Setting the append attribute instructs to append to this specific string array for the current and also subsequent loading steps.  To change back to overriding, set `{append=false}`.
+
+Consider the following example:
+```
+modules1.conf: env=["1=true"]
+modules2.conf: env=["2=true"]
+modules3.conf: env=["3=true", {append=true}]
+modules3.conf: env=["4=true"]
+```
+
+After loading the files in the given order, the final contents are `env=["2=true", "3=true", "4=true"]`.  If modules4.conf would set `{append=false}`, the final contents would be `env=["4=true"]`.
+
 # FORMAT
 The [TOML format][toml] is used as the encoding of the configuration file.
 Every option is nested under its table. No bare options are used. The format of
@@ -205,6 +219,10 @@ Run an init inside the container that forwards signals and reaps processes.
 
 **init_path**="/usr/libexec/podman/catatonit"
 
+If this option is not set catatonit is searched in the directories listed under
+the **helper_binaries_dir** option. It is recommended to just install catatonit
+there instead of configuring this option here.
+
 Path to the container-init binary, which forwards signals and reaps processes
 within containers. Note that the container-init binary will only be used when
 the `--init` for podman-create and podman-run is set.
@@ -288,6 +306,12 @@ is imposed.
 **prepare_volume_on_create**=false
 
 Copy the content from the underlying image into the newly created volume when the container is created instead of when it is started. If `false`, the container engine will not copy the content until the container is started. Setting it to `true` may have negative performance implications.
+
+**privileged**=false
+
+Give extended privileges to all containers. A privileged container turns off the security features that isolate the container from the host. Dropped Capabilities, limited devices, read-only mount points, Apparmor/SELinux separation, and Seccomp filters are all disabled. Due to the disabled security features, the privileged field should almost never be set as containers can easily break out of confinment.
+
+Containers running in a user namespace (e.g., rootless containers) cannot have more privileges than the user that launched them.
 
 **read_only**=true|false
 
@@ -501,10 +525,13 @@ conmon_path=[
 ]
 ```
 
-**database_backend**="boltdb"
+**database_backend**=""
 
-The database backend of Podman.  Supported values are "boltdb" (default) and
-"sqlite". Please run `podman-system-reset` prior to changing the database
+The database backend of Podman.  Supported values are "" (default), "boltdb"
+and "sqlite". An empty value means it will check whenever a boltdb already
+exists and use it when it does, otherwise it will use sqlite as default
+(e.g. new installs). This allows for backwards compatibility with older versions.
+Please run `podman-system-reset` prior to changing the database
 backend of an existing deployment, to make sure Podman can operate correctly.
 
 **detach_keys**="ctrl-p,ctrl-q"
@@ -565,6 +592,17 @@ with detailed information about the container.  Set to false by default.
 **helper_binaries_dir**=["/usr/libexec/podman", ...]
 
 A is a list of directories which are used to search for helper binaries.
+The following binaries are searched in these directories:
+ - aardvark-dns
+ - catatonit
+ - netavark
+ - pasta
+ - slirp4netns
+
+Podman machine uses it for these binaries:
+ - gvproxy
+ - qemu
+ - vfkit
 
 The default paths on Linux are:
 
@@ -798,9 +836,9 @@ URI to access the Podman service
 
   Example URIs:
 
-- **rootless local**  - unix://run/user/1000/podman/podman.sock
+- **rootless local**  - unix:///run/user/1000/podman/podman.sock
 - **rootless remote** - ssh://user@engineering.lab.company.com/run/user/1000/podman/podman.sock
-- **rootful local**  - unix://run/podman/podman.sock
+- **rootful local**  - unix:///run/podman/podman.sock
 - **rootful remote** - ssh://root@10.10.1.136:22/run/podman/podman.sock
 
 **identity="~/.ssh/id_rsa**

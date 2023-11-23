@@ -12,13 +12,13 @@ Signed-off-by: Valentin Rothberg <vrothberg@redhat.com>
  pkg/apparmor/apparmor_linux.go | 5 +++++
  1 file changed, 5 insertions(+)
 
-diff --git a/pkg/apparmor/apparmor_linux.go b/pkg/apparmor/apparmor_linux.go
-index 7ba63ba74..435422c27 100644
---- a/pkg/apparmor/apparmor_linux.go
-+++ b/pkg/apparmor/apparmor_linux.go
-@@ -212,6 +212,11 @@ func parseAAParserVersion(output string) (int, error) {
- 	words := strings.Split(lines[0], " ")
- 	version := words[len(words)-1]
+Index: golang-github-containers-common/pkg/apparmor/apparmor_linux.go
+===================================================================
+--- golang-github-containers-common.orig/pkg/apparmor/apparmor_linux.go
++++ golang-github-containers-common/pkg/apparmor/apparmor_linux.go
+@@ -217,6 +217,11 @@ func parseAAParserVersion(output string)
+ 	// also trim "~..." suffix used historically (https://gitlab.com/apparmor/apparmor/-/commit/bca67d3d27d219d11ce8c9cc70612bd637f88c10)
+ 	version = strings.SplitN(version, "~", 2)[0]
  
 +	// trim "-beta1" suffix from version="3.0.0-beta1" if exists
 +	version = strings.SplitN(version, "-", 2)[0]

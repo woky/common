@@ -1,3 +1,10 @@
+golang-github-containers-common (0.57.0+ds1-1) experimental; urgency=medium
+
+  * New upstream release
+  * Bump dependency on golang-toml, fixes a unit test case
+
+ -- Reinhard Tartler <siretart@tauware.de>  Thu, 23 Nov 2023 17:04:18 +0000
+
 golang-github-containers-common (0.56.0+ds1-4) unstable; urgency=medium
 
   * backport patch to fix apparmor parsing LP: #2040082
