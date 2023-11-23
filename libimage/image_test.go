@@ -1,9 +1,14 @@
+//go:build !remote
+// +build !remote
+
 package libimage
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/containers/common/pkg/config"
@@ -261,21 +266,8 @@ func TestInspectHealthcheck(t *testing.T) {
 }
 
 func TestTag(t *testing.T) {
-	// Note: this will resolve pull from the GCR registry (see
-	// testdata/registries.conf).
-	busyboxLatest := "docker.io/library/busybox:latest"
-
-	runtime, cleanup := testNewRuntime(t)
+	runtime, image, cleanup := getImageAndRuntime(t)
 	defer cleanup()
-	ctx := context.Background()
-
-	pullOptions := &PullOptions{}
-	pullOptions.Writer = os.Stdout
-	pulledImages, err := runtime.Pull(ctx, busyboxLatest, config.PullPolicyMissing, pullOptions)
-	require.NoError(t, err)
-	require.Len(t, pulledImages, 1)
-
-	image := pulledImages[0]
 
 	digest := "sha256:adab3844f497ab9171f070d4cae4114b5aec565ac772e2f2579405b78be67c96"
 
@@ -307,17 +299,108 @@ func TestTag(t *testing.T) {
 	}
 
 	// Check for specific error.
-	err = image.Tag("foo@" + digest)
+	err := image.Tag("foo@" + digest)
 	require.True(t, errors.Is(err, errTagDigest), "check for specific digest error")
 }
 
+func TestTagAndUntagParallel(t *testing.T) {
+	runtime, image, cleanup := getImageAndRuntime(t)
+	defer cleanup()
+
+	tagCount := 10
+	wg := sync.WaitGroup{}
+
+	origNames := image.Names()
+
+	names := make([]string, 0, tagCount)
+	names = append(names, origNames...)
+
+	// Test tag in parallel, the extra go routine is critical for the test do not remove that.
+	wg.Add(tagCount)
+	for i := 0; i < tagCount; i++ {
+		name := fmt.Sprintf("localhost/tag-%d:latest", i)
+		names = append(names, name)
+		go func(name string) {
+			defer wg.Done()
+			err := image.Tag(name)
+			require.NoError(t, err, "parallel tag should have succeeded")
+		}(name)
+	}
+
+	// wait for all routines to finish
+	wg.Wait()
+
+	newImg, _, err := runtime.LookupImage(image.ID(), nil)
+	require.NoError(t, err, "image should have resolved locally")
+	// Note use ElementsMatch because the order is unspecified to the parallel nature
+	require.ElementsMatch(t, names, newImg.Names(), "tag image names should contain same elements")
+
+	// Test untag in parallel
+	wg.Add(tagCount)
+	for i := 0; i < tagCount; i++ {
+		name := fmt.Sprintf("localhost/tag-%d:latest", i)
+		names = append(names, name)
+		go func(name string) {
+			defer wg.Done()
+			err := image.Untag(name)
+			require.NoError(t, err, "parallel untag should have succeeded")
+		}(name)
+	}
+	// wait for all routines to finish
+	wg.Wait()
+
+	newImg, _, err = runtime.LookupImage(image.ID(), nil)
+	require.NoError(t, err, "image should have resolved locally")
+	require.Equal(t, origNames, newImg.Names(), "untag image names should contain same elements")
+}
+
 func TestUntag(t *testing.T) {
+	runtime, image, cleanup := getImageAndRuntime(t)
+	defer cleanup()
+
+	digest := "sha256:adab3844f497ab9171f070d4cae4114b5aec565ac772e2f2579405b78be67c96"
+
+	// Untag
+	for _, test := range []struct {
+		tag         string
+		untag       string
+		expectError string
+	}{
+		{"foo", "foo", ""},
+		{"foo", "foo:latest", ""},
+		{"foo", "localhost/foo", ""},
+		{"foo", "localhost/foo:latest", ""},
+		{"quay.io/image/foo", "quay.io/image/foo", ""},
+		{"foo", "upperCase", "normalizing name \"upperCase\": repository name must be lowercase"},
+		{"foo", "donotexist", "localhost/donotexist:latest: tag not known"},
+		{"foo", digest, digest + ": untag by digest not supported"},
+		//		{"foo", "foo@" + digest, false},
+		//		{"foo", "localhost/foo@" + digest, false},
+	} {
+		err := image.Tag(test.tag)
+		require.NoError(t, err, "tag should have succeeded: %v", test)
+
+		err = image.Untag(test.untag)
+		if test.expectError != "" {
+			require.EqualError(t, err, test.expectError, "untag should have failed: %v", test)
+			continue
+		}
+		require.NoError(t, err, "untag should have succeedded: %v", test)
+		_, resolvedName, err := runtime.LookupImage(test.tag, nil)
+		require.Error(t, err, "image should not resolve after untag anymore (%s): %v", resolvedName, test)
+	}
+
+	// Check for specific error.
+	err := image.Untag(digest)
+	require.ErrorIs(t, err, errUntagDigest, "check for specific digest error")
+}
+
+func getImageAndRuntime(t *testing.T) (*Runtime, *Image, func()) {
 	// Note: this will resolve pull from the GCR registry (see
 	// testdata/registries.conf).
 	busyboxLatest := "docker.io/library/busybox:latest"
 
 	runtime, cleanup := testNewRuntime(t)
-	defer cleanup()
 	ctx := context.Background()
 
 	pullOptions := &PullOptions{}
@@ -328,38 +411,5 @@ func TestUntag(t *testing.T) {
 
 	image := pulledImages[0]
 
-	digest := "sha256:adab3844f497ab9171f070d4cae4114b5aec565ac772e2f2579405b78be67c96"
-
-	// Untag
-	for _, test := range []struct {
-		tag         string
-		untag       string
-		expectError bool
-	}{
-		{"foo", "foo", false},
-		{"foo", "foo:latest", false},
-		{"foo", "localhost/foo", false},
-		{"foo", "localhost/foo:latest", false},
-		{"quay.io/image/foo", "quay.io/image/foo", false},
-		{"foo", "doNotExist", true},
-		{"foo", digest, true},
-		//		{"foo", "foo@" + digest, false},
-		//		{"foo", "localhost/foo@" + digest, false},
-	} {
-		err := image.Tag(test.tag)
-		require.NoError(t, err, "tag should have succeeded: %v", test)
-
-		err = image.Untag(test.untag)
-		if test.expectError {
-			require.Error(t, err, "untag should have failed: %v", test)
-			continue
-		}
-		require.NoError(t, err, "untag should have succeedded: %v", test)
-		_, resolvedName, err := runtime.LookupImage(test.tag, nil)
-		require.Error(t, err, "image should not resolve after untag anymore (%s): %v", resolvedName, test)
-	}
-
-	// Check for specific error.
-	err = image.Untag(digest)
-	require.True(t, errors.Is(err, errUntagDigest), "check for specific digest error")
+	return runtime, image, cleanup
 }

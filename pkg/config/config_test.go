@@ -29,6 +29,7 @@ var _ = Describe("Config", func() {
 			gomega.Expect(defaultConfig.Containers.ApparmorProfile).To(gomega.Equal(apparmor.Profile))
 			gomega.Expect(defaultConfig.Containers.BaseHostsFile).To(gomega.Equal(""))
 			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
+			gomega.Expect(defaultConfig.Containers.Privileged).To(gomega.BeFalse())
 			gomega.Expect(defaultConfig.Containers.ReadOnly).To(gomega.BeFalse())
 			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(5))
 			gomega.Expect(defaultConfig.Engine.CompressionFormat).To(gomega.BeEquivalentTo("gzip"))
@@ -43,13 +44,10 @@ var _ = Describe("Config", func() {
 			}
 			gomega.Expect(defaultConfig.Engine.SSHConfig).To(gomega.ContainSubstring("/.ssh/config"))
 			gomega.Expect(defaultConfig.Engine.EventsContainerCreateInspectData).To(gomega.BeFalse())
-			gomega.Expect(defaultConfig.Engine.DBBackend).To(gomega.BeEquivalentTo(stringBoltDB))
+			gomega.Expect(defaultConfig.Engine.DBBackend).To(gomega.Equal(""))
 			gomega.Expect(defaultConfig.Engine.PodmanshTimeout).To(gomega.BeEquivalentTo(30))
-			gomega.Expect(defaultConfig.Engine.AddCompression).To(gomega.BeNil())
+			gomega.Expect(defaultConfig.Engine.AddCompression.Get()).To(gomega.HaveLen(0))
 
-			dbBackend, err := defaultConfig.DBBackend()
-			gomega.Expect(dbBackend).To(gomega.BeEquivalentTo(DBBackendBoltDB))
-			gomega.Expect(err).To(gomega.BeNil())
 			path, err := defaultConfig.ImageCopyTmpDir()
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(path).To(gomega.BeEquivalentTo("/var/tmp"))
@@ -61,12 +59,12 @@ var _ = Describe("Config", func() {
 			gomega.Expect(defConf).NotTo(gomega.BeNil())
 
 			// Given
-			defConf.Containers.Devices = []string{
+			defConf.Containers.Devices.Set([]string{
 				"/dev/null:/dev/null:rw",
 				"/dev/sdc/",
 				"/dev/sdc:/dev/xvdc",
 				"/dev/sdc:rm",
-			}
+			})
 
 			// When
 			err = defConf.Containers.Validate()
@@ -287,20 +285,20 @@ image_copy_tmp_dir="storage"`
 			// Then
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(defaultConfig.Engine.CgroupManager).To(gomega.Equal("systemd"))
-			gomega.Expect(defaultConfig.Containers.Env).To(gomega.BeEquivalentTo(envs))
-			gomega.Expect(defaultConfig.Containers.Mounts).To(gomega.BeEquivalentTo(mounts))
+			gomega.Expect(defaultConfig.Containers.Env.Get()).To(gomega.BeEquivalentTo(envs))
+			gomega.Expect(defaultConfig.Containers.Mounts.Get()).To(gomega.BeEquivalentTo(mounts))
 			gomega.Expect(defaultConfig.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
-			gomega.Expect(defaultConfig.Network.CNIPluginDirs).To(gomega.Equal(pluginDirs))
-			gomega.Expect(defaultConfig.Network.NetavarkPluginDirs).To(gomega.Equal([]string{"/usr/netavark"}))
+			gomega.Expect(defaultConfig.Network.CNIPluginDirs.Get()).To(gomega.Equal(pluginDirs))
+			gomega.Expect(defaultConfig.Network.NetavarkPluginDirs.Get()).To(gomega.Equal([]string{"/usr/netavark"}))
 			gomega.Expect(defaultConfig.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(defaultConfig.Engine.OCIRuntimes).To(gomega.Equal(OCIRuntimeMap))
 			gomega.Expect(defaultConfig.Engine.PlatformToOCIRuntime).To(gomega.Equal(PlatformToOCIRuntimeMap))
 			gomega.Expect(defaultConfig.Containers.HTTPProxy).To(gomega.Equal(false))
-			gomega.Expect(defaultConfig.Engine.NetworkCmdOptions).To(gomega.BeNil())
-			gomega.Expect(defaultConfig.Engine.HelperBinariesDir).To(gomega.Equal(helperDirs))
+			gomega.Expect(defaultConfig.Engine.NetworkCmdOptions.Get()).To(gomega.HaveLen(0))
+			gomega.Expect(defaultConfig.Engine.HelperBinariesDir.Get()).To(gomega.Equal(helperDirs))
 			gomega.Expect(defaultConfig.Engine.ServiceTimeout).To(gomega.BeEquivalentTo(300))
 			gomega.Expect(defaultConfig.Engine.InfraImage).To(gomega.BeEquivalentTo("k8s.gcr.io/pause:3.4.1"))
-			gomega.Expect(defaultConfig.Machine.Volumes).To(gomega.BeEquivalentTo(volumes))
+			gomega.Expect(defaultConfig.Machine.Volumes.Get()).To(gomega.BeEquivalentTo(volumes))
 			gomega.Expect(defaultConfig.Engine.PodmanshTimeout).To(gomega.BeEquivalentTo(300))
 			newV, err := defaultConfig.MachineVolumes()
 			if newVolumes[0] == ":" {
@@ -429,13 +427,13 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(config.Containers.ApparmorProfile).To(gomega.Equal(apparmor.Profile))
 			gomega.Expect(config.Containers.PidsLimit).To(gomega.BeEquivalentTo(2048))
-			gomega.Expect(config.Containers.Env).To(gomega.BeEquivalentTo(envs))
+			gomega.Expect(config.Containers.Env.Get()).To(gomega.BeEquivalentTo(envs))
 			gomega.Expect(config.Containers.UserNS).To(gomega.BeEquivalentTo(""))
-			gomega.Expect(config.Network.CNIPluginDirs).To(gomega.Equal(DefaultCNIPluginDirs))
-			gomega.Expect(config.Network.NetavarkPluginDirs).To(gomega.Equal(DefaultNetavarkPluginDirs))
+			gomega.Expect(config.Network.CNIPluginDirs.Get()).To(gomega.Equal(DefaultCNIPluginDirs))
+			gomega.Expect(config.Network.NetavarkPluginDirs.Get()).To(gomega.Equal(DefaultNetavarkPluginDirs))
 			gomega.Expect(config.Engine.NumLocks).To(gomega.BeEquivalentTo(2048))
 			gomega.Expect(config.Engine.OCIRuntimes["runc"]).To(gomega.Equal(OCIRuntimeMap["runc"]))
-			gomega.Expect(config.Containers.CgroupConf).To(gomega.BeNil())
+			gomega.Expect(config.Containers.CgroupConf.Get()).To(gomega.HaveLen(0))
 
 			caps, _ := config.Capabilities("", nil, nil)
 			gomega.Expect(caps).Should(gomega.Equal(defCaps))
@@ -475,10 +473,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(config.Engine.SSHConfig).To(gomega.Equal("/foo/bar/.ssh/config"))
 
 			gomega.Expect(config.Engine.DBBackend).To(gomega.Equal(stringSQLite))
-			dbBackend, err := config.DBBackend()
-			gomega.Expect(err).To(gomega.BeNil())
-			gomega.Expect(dbBackend).To(gomega.BeEquivalentTo(DBBackendSQLite))
-			gomega.Expect(config.Containers.CgroupConf).To(gomega.Equal(cgroupConf))
+			gomega.Expect(config.Containers.CgroupConf.Get()).To(gomega.Equal(cgroupConf))
 			gomega.Expect(*config.Containers.OOMScoreAdj).To(gomega.Equal(int(750)))
 			gomega.Expect(config.Engine.KubeGenerateType).To(gomega.Equal("pod"))
 		})
@@ -515,6 +510,7 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(config.Containers.LogDriver).To(gomega.Equal("journald"))
 			gomega.Expect(config.Containers.LogTag).To(gomega.Equal("{{.Name}}|{{.ID}}"))
 			gomega.Expect(config.Containers.LogSizeMax).To(gomega.Equal(int64(100000)))
+			gomega.Expect(config.Containers.Privileged).To(gomega.BeTrue())
 			gomega.Expect(config.Containers.ReadOnly).To(gomega.BeTrue())
 			gomega.Expect(config.Engine.ImageParallelCopies).To(gomega.Equal(uint(10)))
 			gomega.Expect(config.Engine.PlatformToOCIRuntime).To(gomega.Equal(PlatformToOCIRuntimeMap))
@@ -551,7 +547,7 @@ image_copy_tmp_dir="storage"`
 			caps, err := config.Capabilities("0", addcaps, dropcaps)
 			gomega.Expect(err).To(gomega.BeNil())
 			sort.Strings(caps)
-			defaultCaps := config.Containers.DefaultCapabilities
+			defaultCaps := config.Containers.DefaultCapabilities.Get()
 			sort.Strings(defaultCaps)
 			gomega.Expect(caps).To(gomega.BeEquivalentTo(defaultCaps))
 
@@ -571,12 +567,12 @@ image_copy_tmp_dir="storage"`
 			sort.Strings(caps)
 			gomega.Expect(caps).ToNot(gomega.BeEquivalentTo([]string{}))
 
-			config.Containers.DefaultCapabilities = []string{
+			config.Containers.DefaultCapabilities.Set([]string{
 				"CAP_AUDIT_WRITE",
 				"CAP_CHOWN",
 				"CAP_DAC_OVERRIDE",
 				"CAP_FOWNER",
-			}
+			})
 
 			expectedCaps := []string{
 				"CAP_AUDIT_WRITE",
@@ -646,9 +642,9 @@ image_copy_tmp_dir="storage"`
 			gomega.Expect(err).To(gomega.BeNil())
 			gomega.Expect(defConf).NotTo(gomega.BeNil())
 
-			defConf.Engine.DBBackend = ""
+			defConf.Engine.DBBackend = "blah"
 			err = defConf.Engine.Validate()
-			gomega.Expect(err).ToNot(gomega.BeNil())
+			gomega.Expect(err).To(gomega.HaveOccurred())
 		})
 	})
 
@@ -706,131 +702,6 @@ image_copy_tmp_dir="storage"`
 				"https://qa/run/podman/podman.sock")
 			gomega.Expect(cfg.Engine.ServiceDestinations["QA"].Identity,
 				"/.ssh/id_rsa")
-		})
-
-		It("succeed ActiveDestinations()", func() {
-			cfg, err := ReadCustomConfig()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			cfg.Engine.ActiveService = "QA"
-			cfg.Engine.ServiceDestinations = map[string]Destination{
-				"QB": {
-					URI:      "https://qb/run/podman/podman.sock",
-					Identity: "/.ssh/qb_id_rsa",
-				},
-				"QA": {
-					URI:      "https://qa/run/podman/podman.sock",
-					Identity: "/.ssh/id_rsa",
-				},
-			}
-			err = cfg.Write()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			cfg, err = ReadCustomConfig()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			u, i, m, err := cfg.ActiveDestination()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			gomega.Expect(m).To(gomega.Equal(false))
-			gomega.Expect(u).To(gomega.Equal("https://qa/run/podman/podman.sock"))
-			gomega.Expect(i).To(gomega.Equal("/.ssh/id_rsa"))
-		})
-
-		It("succeed ActiveDestinations() CONTAINER_CONNECTION environment", func() {
-			cfg, err := ReadCustomConfig()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			cfg.Engine.ActiveService = "QA"
-			cfg.Engine.ServiceDestinations = map[string]Destination{
-				"QA": {
-					URI:      "https://qa/run/podman/podman.sock",
-					Identity: "/.ssh/id_rsa",
-				},
-				"QB": {
-					URI:      "https://qb/run/podman/podman.sock",
-					Identity: "/.ssh/qb_id_rsa",
-				},
-			}
-			err = cfg.Write()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			cfg, err = ReadCustomConfig()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			// Given we do
-			oldContainerConnection, hostEnvSet := os.LookupEnv("CONTAINER_CONNECTION")
-			os.Setenv("CONTAINER_CONNECTION", "QB")
-
-			u, i, m, err := cfg.ActiveDestination()
-			// Undo that
-			if hostEnvSet {
-				os.Setenv("CONTAINER_CONNECTION", oldContainerConnection)
-			} else {
-				os.Unsetenv("CONTAINER_CONNECTION")
-			}
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			gomega.Expect(m).To(gomega.Equal(false))
-
-			gomega.Expect(u).To(gomega.Equal("https://qb/run/podman/podman.sock"))
-			gomega.Expect(i).To(gomega.Equal("/.ssh/qb_id_rsa"))
-		})
-
-		It("succeed ActiveDestinations CONTAINER_HOST ()", func() {
-			cfg, err := ReadCustomConfig()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			cfg.Engine.ActiveService = "QA"
-			cfg.Engine.ServiceDestinations = map[string]Destination{
-				"QB": {
-					URI:      "https://qb/run/podman/podman.sock",
-					Identity: "/.ssh/qb_id_rsa",
-				},
-				"QA": {
-					URI:      "https://qa/run/podman/podman.sock",
-					Identity: "/.ssh/id_rsa",
-				},
-			}
-			err = cfg.Write()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			cfg, err = ReadCustomConfig()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			// Given we do
-			oldContainerHost, hostEnvSet := os.LookupEnv("CONTAINER_HOST")
-			oldContainerSSH, sshEnvSet := os.LookupEnv("CONTAINER_SSHKEY")
-			os.Setenv("CONTAINER_HOST", "foo.bar")
-			os.Setenv("CONTAINER_SSHKEY", "/.ssh/newid_rsa")
-
-			u, i, m, err := cfg.ActiveDestination()
-
-			// Undo that
-			if hostEnvSet {
-				os.Setenv("CONTAINER_HOST", oldContainerHost)
-			} else {
-				os.Unsetenv("CONTAINER_HOST")
-			}
-			// Undo that
-			if sshEnvSet {
-				os.Setenv("CONTAINER_SSHKEY", oldContainerSSH)
-			} else {
-				os.Unsetenv("CONTAINER_SSHKEY")
-			}
-
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-			gomega.Expect(m).To(gomega.Equal(false))
-
-			gomega.Expect(u).To(gomega.Equal("foo.bar"))
-			gomega.Expect(i).To(gomega.Equal("/.ssh/newid_rsa"))
-		})
-
-		It("fail ActiveDestination() no configuration", func() {
-			cfg, err := ReadCustomConfig()
-			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-
-			_, _, _, err = cfg.ActiveDestination()
-			gomega.Expect(err).Should(gomega.HaveOccurred())
 		})
 
 		It("test addConfigs", func() {
@@ -995,8 +866,8 @@ env=["foo=bar"]`
 
 			expectOldEnv := []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
 			expectNewEnv := []string{"foo=bar"}
-			gomega.Expect(cfg.Containers.Env).To(gomega.Equal(expectOldEnv))
-			gomega.Expect(newCfg.Containers.Env).To(gomega.Equal(expectNewEnv))
+			gomega.Expect(cfg.Containers.Env.Get()).To(gomega.Equal(expectOldEnv))
+			gomega.Expect(newCfg.Containers.Env.Get()).To(gomega.Equal(expectNewEnv))
 			// Reload change back to default global configuration
 			_, err = Reload()
 			gomega.Expect(err).To(gomega.BeNil())

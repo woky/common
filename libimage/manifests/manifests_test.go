@@ -1,20 +1,24 @@
 package manifests
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/containers/common/pkg/manifests"
 	cp "github.com/containers/image/v5/copy"
 	"github.com/containers/image/v5/manifest"
+	"github.com/containers/image/v5/pkg/compression"
 	"github.com/containers/image/v5/transports/alltransports"
 	"github.com/containers/image/v5/types"
 	"github.com/containers/storage"
 	"github.com/containers/storage/pkg/unshare"
 	digest "github.com/opencontainers/go-digest"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -258,7 +262,7 @@ func TestReference(t *testing.T) {
 	assert.NotNilf(t, listRef, "list.Reference(saved)")
 }
 
-func TestPush(t *testing.T) {
+func TestPushManifest(t *testing.T) {
 	if unshare.IsRootless() {
 		t.Skip("Test can only run as root")
 	}
@@ -334,11 +338,38 @@ func TestPush(t *testing.T) {
 	_, _, err = list.Push(ctx, destRef, options)
 	assert.Nilf(t, err, "list.Push(four specified)")
 
+	bogusDestRef, err := alltransports.ParseImageName("docker://localhost/bogus/dest:latest")
+	assert.NoErrorf(t, err, "ParseImageName()")
+
+	var logBuffer bytes.Buffer
+	logBuffer = bytes.Buffer{}
+	logrus.SetOutput(&logBuffer)
+	maxRetry := uint(5)
+	delay := 3 * time.Second
+	options.MaxRetries = &maxRetry
+	_, _, err = list.Push(ctx, bogusDestRef, options)
+	assert.Error(t, err)
+	logString := logBuffer.String()
+	// Must show warning where libimage is going to retry 5 times with 1s delay
+	assert.Contains(t, logString, "Failed, retrying in 1s ... (1/5)", "warning not matched")
+
+	logBuffer = bytes.Buffer{}
+	logrus.SetOutput(&logBuffer)
+	options.RetryDelay = &delay
+	_, _, err = list.Push(ctx, bogusDestRef, options)
+	assert.Error(t, err)
+	logString = logBuffer.String()
+	// Must show warning where libimage is going to retry 5 times with 3s delay
+	assert.Contains(t, logString, "Failed, retrying in 3s ... (1/5)", "warning not matched")
+
 	options.AddCompression = []string{"zstd"}
+	options.ImageListSelection = cp.CopyAllImages
 	_, _, err = list.Push(ctx, destRef, options)
 	assert.NoError(t, err, "list.Push(with replication for zstd specified)")
 
 	options.ForceCompressionFormat = true
+	options.ImageListSelection = cp.CopyAllImages
+	options.SystemContext.CompressionFormat = &compression.Gzip
 	_, _, err = list.Push(ctx, destRef, options)
 	assert.NoError(t, err, "list.Push(with ForceCompressionFormat: true)")
 }
