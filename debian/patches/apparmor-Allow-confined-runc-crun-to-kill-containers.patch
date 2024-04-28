@@ -1,0 +1,66 @@
+From 4e85b17f1adb47d3de3b348f707d785b1ec4900c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tom=C3=A1=C5=A1=20Virtus?= <nechtom@gmail.com>
+Date: Sun, 28 Apr 2024 22:17:12 +0200
+Subject: [PATCH] apparmor: Allow confined runc/crun to kill containers
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+Origin: https://github.com/woky/common/commit/4e85b17f1adb47d3de3b348f707d785b1ec4900c
+Forwarded: no
+
+AppArmor v4.0.0 introduced runc and crun profiles for /usr/sbin/runc and
+/usr/bin/crun respectively[1]. This change breaks stopping of
+containers, because the built-in profile assigned to containers doesn't
+accept signals from runc and crun peers. AppArmor >= v4.0.0 is currently
+part of Ubuntu Mantic (23.10) and later.
+
+The issue is reproducible when podman is run with privileges to load new
+AppArmor profiles (e.g. as root):
+
+  Test commands:
+
+    root@cloudimg:~# podman run -d --name foo docker.io/library/nginx:latest
+    1859ea952f6bfb90cc42a57e128d9a2fd7a134e3fbbbe0c22a57bf1b37468cd0
+    root@cloudimg:~# podman stop foo
+    WARN[0010] StopSignal SIGQUIT failed to stop container foo in 10 seconds, resorting to SIGKILL
+    Error: given PID did not die within timeout
+
+  AppArmor denial in syslog (with long lines wrapped):
+
+    Apr 28 20:26:49 cloudimg kernel: audit:
+      type=1400 audit(1714336009.026:112): apparmor="DENIED"
+      operation="signal" class="signal"
+      profile="containers-default-0.57.4" pid=2553 comm="3"
+      requested_mask="receive" denied_mask="receive" signal=quit
+      peer="crun"
+
+This change extends the default profile with rules that allow receiving
+signals from processes that run confined with either runc or crun
+profile. It is backward compatible because the peer value is a regular
+expression (AARE) so the referenced profile doesn't have to exist for
+this profile to successfully compile and load.
+
+[1] https://gitlab.com/apparmor/apparmor/-/commit/2594d936
+
+Signed-off-by: Tomáš Virtus <nechtom@gmail.com>
+---
+ pkg/apparmor/apparmor_linux_template.go | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/pkg/apparmor/apparmor_linux_template.go b/pkg/apparmor/apparmor_linux_template.go
+index b8212542..d1ac2780 100644
+--- a/pkg/apparmor/apparmor_linux_template.go
++++ b/pkg/apparmor/apparmor_linux_template.go
+@@ -21,6 +21,9 @@ profile {{.Name}} flags=(attach_disconnected,mediate_deleted) {
+   # Allow signals from privileged profiles and from within the same profile
+   signal (receive) peer=unconfined,
+   signal (send,receive) peer={{.Name}},
++  # Allow signals from OCI runtimes (runc and crun)
++  signal (receive) peer=runc,
++  signal (receive) peer=crun,
+ {{end}}
+ 
+   deny @{PROC}/* w,   # deny write for all files directly in /proc (not in a subdir)
+-- 
+2.44.0
+
