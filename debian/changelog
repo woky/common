@@ -1,3 +1,10 @@
+golang-github-containers-common (0.57.4+ds1-2ubuntu0.1) noble; urgency=medium
+
+  * d/p/apparmor-Allow-confined-runc-crun-to-kill-containers.patch:
+    fix podman running with AppArmor v4.0.0 profiles (LP: #2040483)
+
+ -- Tomáš Virtus <tomas.virtus@canonical.com>  Sun, 28 Apr 2024 21:12:37 +0000
+
 golang-github-containers-common (0.57.4+ds1-2) unstable; urgency=medium
 
   * Upload to unstable
