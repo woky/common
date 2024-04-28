@@ -21,6 +21,9 @@ profile {{.Name}} flags=(attach_disconnected,mediate_deleted) {
   # Allow signals from privileged profiles and from within the same profile
   signal (receive) peer=unconfined,
   signal (send,receive) peer={{.Name}},
+  # Allow signals from OCI runtimes (runc and crun)
+  signal (receive) peer=runc,
+  signal (receive) peer=crun,
 {{end}}
 
   deny @{PROC}/* w,   # deny write for all files directly in /proc (not in a subdir)
