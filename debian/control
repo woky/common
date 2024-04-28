@@ -1,5 +1,6 @@
 Source: golang-github-containers-common
-Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+XSBC-Original-Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>
 Section: golang
 Testsuite: autopkgtest-pkg-go
